@@ -1,0 +1,519 @@
+#!/usr/bin/env bash
+# clash 单入口：管理 mihomo 启停、日志、状态和订阅配置。
+
+# #----路径定位----
+if [ -n "${ZSH_VERSION:-}" ]; then
+    SCRIPT_PATH="${(%):-%x}"
+elif [ -n "${BASH_SOURCE[0]:-}" ]; then
+    SCRIPT_PATH="${BASH_SOURCE[0]}"
+else
+    SCRIPT_PATH="$0"
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+CLASH_DIR="${CLASH_DIR:-$PROJECT_DIR/mihomo}"
+CLASH_BIN="${CLASH_BIN:-$CLASH_DIR/mihomo-linux-amd64-v1}"
+CONFIG_FILE="${CLASH_CONFIG:-$CLASH_DIR/config.yaml}"
+PID_FILE="${CLASH_PID:-$CLASH_DIR/mihomo.pid}"
+LOG_FILE="${CLASH_LOG:-$CLASH_DIR/mihomo.log}"
+TUI_DIR="${CLASH_TUI_DIR:-$PROJECT_DIR/tui}"
+TUI_BIN_DIR="${CLASH_TUI_BIN_DIR:-$PROJECT_DIR/bin}"
+TUI_BIN="$TUI_BIN_DIR/clash-tui"
+DEFAULT_PROXY_PORT=7890
+
+return_or_exit() {
+    local code="${1:-0}"
+    return "$code" 2>/dev/null || exit "$code"
+}
+
+is_sourced() {
+    [ "${BASH_SOURCE[0]:-}" != "$0" ] || [ -n "${ZSH_EVAL_CONTEXT:-}" ]
+}
+
+die() {
+    echo "clash: $*" >&2
+    return_or_exit 1
+}
+
+info() {
+    echo "$*"
+}
+
+quiet() {
+    [ "${CLASH_QUIET:-0}" = "1" ]
+}
+
+# #----依赖与 YAML----
+require_yq() {
+    command -v yq >/dev/null 2>&1 || die "需要 yq。Debian/Ubuntu 可执行：sudo apt install yq"
+}
+
+yq_read() {
+    command -v yq >/dev/null 2>&1 || return 1
+    yq -r "$1" "$CONFIG_FILE"
+}
+
+yq_write() {
+    require_yq || return 1
+    local expr="$1"
+    if yq -i "$expr" "$CONFIG_FILE" >/dev/null 2>&1; then
+        return 0
+    fi
+    yq -y -i "$expr" "$CONFIG_FILE"
+}
+
+json_quote() {
+    local value="$1"
+    value="${value//\\/\\\\}"
+    value="${value//\"/\\\"}"
+    value="${value//$'\n'/\\n}"
+    printf '"%s"' "$value"
+}
+
+backup_config() {
+    local stamp backup index
+    stamp="$(date +%Y%m%d%H%M%S)"
+    backup="$CONFIG_FILE.bak.$stamp"
+    index=1
+    while [ -e "$backup" ]; do
+        backup="$CONFIG_FILE.bak.$stamp.$index"
+        index=$((index + 1))
+    done
+    cp "$CONFIG_FILE" "$backup" || return 1
+    info "Backup: $backup"
+}
+
+config_value() {
+    local expr="$1"
+    yq_read "$expr" 2>/dev/null | sed '/^null$/d'
+}
+
+fallback_tun_enabled() {
+    awk '
+        /^[[:space:]]*tun:[[:space:]]*$/ { in_tun = 1; next }
+        in_tun && /^[^[:space:]]/ { in_tun = 0 }
+        in_tun && /^[[:space:]]*enable:[[:space:]]*/ {
+            gsub(/[[:space:]]/, "", $2)
+            print $2
+            exit
+        }
+    ' "$CONFIG_FILE" 2>/dev/null
+}
+
+proxy_port() {
+    local port
+    port="$(config_value '."mixed-port" // .port // 7890')"
+    printf '%s' "${port:-$DEFAULT_PROXY_PORT}"
+}
+
+set_tun_enabled() {
+    local enabled="$1"
+    local tmp
+    tmp="$(mktemp)" || return 1
+    awk -v enabled="$enabled" '
+        function indent_of(line, pos) {
+            pos = match(line, /[^ ]/)
+            return pos ? pos - 1 : length(line)
+        }
+        function spaces(count, out, i) {
+            out = ""
+            for (i = 0; i < count; i++) out = out " "
+            return out
+        }
+        /^[[:space:]]*tun:[[:space:]]*$/ {
+            print
+            in_tun = 1
+            seen_tun = 1
+            changed = 0
+            tun_indent = indent_of($0)
+            child_prefix = spaces(tun_indent + 2)
+            next
+        }
+        in_tun {
+            current_indent = indent_of($0)
+            if ($0 !~ /^[[:space:]]*$/ && current_indent <= tun_indent) {
+                if (!changed) {
+                    print child_prefix "enable: " enabled
+                    changed = 1
+                }
+                in_tun = 0
+            }
+            if (in_tun && $0 ~ /^[[:space:]]*enable:[[:space:]]*/) {
+                print child_prefix "enable: " enabled
+                changed = 1
+                next
+            }
+        }
+        { print }
+        END {
+            if (in_tun && !changed) {
+                print child_prefix "enable: " enabled
+            }
+            if (!seen_tun) {
+                print ""
+                print "tun:"
+                print "  enable: " enabled
+                print "  stack: system"
+                print "  auto-route: true"
+                print "  auto-detect-interface: true"
+            }
+        }
+    ' "$CONFIG_FILE" > "$tmp" && mv "$tmp" "$CONFIG_FILE"
+}
+
+# #----运行状态----
+pid_value() {
+    [ -f "$PID_FILE" ] && tr -d '[:space:]' < "$PID_FILE"
+}
+
+is_running() {
+    local pid
+    pid="$(pid_value)"
+    [ -n "$pid" ] && ps -p "$pid" >/dev/null 2>&1
+}
+
+running_mode() {
+    local tun
+    tun="$(config_value '.tun.enable // false')"
+    [ -n "$tun" ] || tun="$(fallback_tun_enabled)"
+    if [ "$tun" = "true" ]; then
+        printf 'tun'
+    else
+        printf 'normal'
+    fi
+}
+
+short_status() {
+    if is_running; then
+        info "mihomo running | pid=$(pid_value) | mode=$(running_mode) | port=$(proxy_port)"
+    else
+        info "mihomo stopped | mode=$(running_mode) | port=$(proxy_port)"
+    fi
+}
+
+status_detail() {
+    short_status
+    echo
+    echo "Paths"
+    echo "  project: $PROJECT_DIR"
+    echo "  mihomo:  $CLASH_DIR"
+    echo "  bin:     $CLASH_BIN"
+    echo "  tui:     $TUI_BIN"
+    echo "  config: $CONFIG_FILE"
+    echo "  pid:     $PID_FILE"
+    echo "  log:     $LOG_FILE"
+    echo
+    echo "Config"
+    echo "  http:       $(config_value '.port // "-"')"
+    echo "  mixed:      $(config_value '."mixed-port" // "-"')"
+    echo "  socks:      $(config_value '."socks-port" // "-"')"
+    echo "  controller: $(config_value '."external-controller" // "-"')"
+    echo "  tun:        $(config_value '.tun.enable // false')"
+    echo "  providers:  $(config_value '."proxy-providers" | keys | join(", ")' || true)"
+    echo
+    echo "Shell"
+    echo "  http_proxy:  ${http_proxy:-"-"}"
+    echo "  https_proxy: ${https_proxy:-"-"}"
+    if [ -f "$LOG_FILE" ]; then
+        echo
+        echo "Log"
+        echo "  size: $(du -h "$LOG_FILE" 2>/dev/null | awk '{print $1}')"
+        echo "  time: $(stat -c '%y' "$LOG_FILE" 2>/dev/null | cut -d'.' -f1)"
+    fi
+}
+
+# #----启停控制----
+prepare_log_user() {
+    if [ -e "$LOG_FILE" ] && [ ! -w "$LOG_FILE" ]; then
+        sudo chown "$(id -u):$(id -g)" "$LOG_FILE" 2>/dev/null || sudo rm -f "$LOG_FILE"
+    fi
+    : > "$LOG_FILE" || return 1
+}
+
+export_proxy_env() {
+    local port
+    port="$(proxy_port)"
+    export http_proxy="127.0.0.1:$port"
+    export https_proxy="$http_proxy"
+    export HTTP_PROXY="$http_proxy"
+    export HTTPS_PROXY="$http_proxy"
+}
+
+unset_proxy_env() {
+    unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+}
+
+sync_env() {
+    if is_running && [ "$(running_mode)" = "normal" ]; then
+        export_proxy_env
+        quiet || info "proxy env enabled: $http_proxy"
+    else
+        unset_proxy_env
+        quiet || info "proxy env cleared"
+    fi
+}
+
+start_normal() {
+    [ -x "$CLASH_BIN" ] || die "mihomo 二进制不可执行：$CLASH_BIN"
+    if is_running; then
+        short_status
+        return 0
+    fi
+
+    set_tun_enabled false || return 1
+    prepare_log_user || die "无法写入日志：$LOG_FILE"
+    nohup "$CLASH_BIN" -d "$CLASH_DIR" > "$LOG_FILE" 2>&1 &
+    echo $! > "$PID_FILE"
+    export_proxy_env
+    info "mihomo started (normal) | pid=$(pid_value) | proxy=$http_proxy"
+}
+
+start_tun() {
+    [ -x "$CLASH_BIN" ] || die "mihomo 二进制不可执行：$CLASH_BIN"
+    if is_running; then
+        short_status
+        return 0
+    fi
+
+    set_tun_enabled true || return 1
+    info "[sudo] TUN 模式需要权限，正在验证..."
+    sudo -v || return 1
+    sudo bash -c "cd '$CLASH_DIR' && : > '$LOG_FILE' && nohup '$CLASH_BIN' -d '$CLASH_DIR' > '$LOG_FILE' 2>&1 & echo \$! > '$PID_FILE'"
+    unset_proxy_env
+    info "mihomo started (tun) | pid=$(pid_value)"
+}
+
+stop_clash() {
+    if ! is_running; then
+        info "mihomo already stopped"
+        rm -f "$PID_FILE" 2>/dev/null || sudo rm -f "$PID_FILE" 2>/dev/null
+        unset_proxy_env
+        return 0
+    fi
+
+    local pid
+    pid="$(pid_value)"
+    if kill "$pid" 2>/dev/null; then
+        info "mihomo stopped | pid=$pid"
+    else
+        info "[sudo] 当前进程可能由 root 启动，尝试 sudo kill..."
+        sudo kill "$pid" 2>/dev/null || return 1
+        info "mihomo stopped | pid=$pid"
+    fi
+    rm -f "$PID_FILE" 2>/dev/null || sudo rm -f "$PID_FILE" 2>/dev/null
+    unset_proxy_env
+}
+
+show_log() {
+    if [ ! -f "$LOG_FILE" ]; then
+        info "日志不存在：$LOG_FILE"
+        return 0
+    fi
+    if command -v less >/dev/null 2>&1; then
+        less +F "$LOG_FILE"
+    else
+        tail -f "$LOG_FILE"
+    fi
+}
+
+# #----订阅配置----
+usage_config() {
+    cat <<'EOF'
+Usage:
+  clash config add -n NAME -u URL [-p PATH]
+  clash config ls
+  clash config rm  -n NAME
+EOF
+}
+
+config_add() {
+    local name="" url="" provider_path=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -n|--name) name="$2"; shift 2 ;;
+            -u|--url) url="$2"; shift 2 ;;
+            -p|--path) provider_path="$2"; shift 2 ;;
+            *) usage_config; return 1 ;;
+        esac
+    done
+    [ -n "$name" ] || die "缺少订阅名：-n/--name"
+    [ -n "$url" ] || die "缺少订阅链接：-u/--url"
+    [ -n "$provider_path" ] || provider_path="$CLASH_DIR/providers/$name.yaml"
+
+    mkdir -p "$CLASH_DIR/providers"
+    backup_config || return 1
+
+    local q_name q_url q_path q_prefix
+    q_name="$(json_quote "$name")"
+    q_url="$(json_quote "$url")"
+    q_path="$(json_quote "$provider_path")"
+    q_prefix="$(json_quote "[$name]")"
+
+    yq_write ".\"proxy-providers\"[$q_name] = {
+        \"type\": \"http\",
+        \"interval\": 3600,
+        \"health-check\": {
+          \"enable\": true,
+          \"url\": \"https://cp.cloudflare.com\",
+          \"interval\": 300,
+          \"timeout\": 1000,
+          \"tolerance\": 100
+        },
+        \"url\": $q_url,
+        \"path\": $q_path,
+        \"override\": {\"additional-prefix\": $q_prefix}
+      } |
+      (.\"proxy-groups\"[] | select(.name == \"自动选择\").use) |= (((. // []) + [$q_name]) | unique) |
+      (.\"proxy-groups\"[] | select(.name == \"全部节点\").use) |= (((. // []) + [$q_name]) | unique)" || return 1
+
+    info "Provider added: $name"
+    info "Path: $provider_path"
+}
+
+config_ls() {
+    require_yq || return 1
+    yq -r '."proxy-providers" // {} | to_entries[] | "\(.key)\t\(.value.url // "-")"' "$CONFIG_FILE" |
+        awk 'BEGIN { printf "%-24s %s\n", "NAME", "URL"; printf "%-24s %s\n", "----", "---" } { printf "%-24s %s\n", $1, $2 }'
+}
+
+config_rm() {
+    local name=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -n|--name) name="$2"; shift 2 ;;
+            -u|--url|-p|--path) shift 2 ;;
+            *) usage_config; return 1 ;;
+        esac
+    done
+    [ -n "$name" ] || die "缺少订阅名：-n/--name"
+
+    backup_config || return 1
+    local q_name
+    q_name="$(json_quote "$name")"
+    yq_write "del(.\"proxy-providers\"[$q_name]) |
+      (.\"proxy-groups\"[]?.use) |= ((. // []) - [$q_name])" || return 1
+    info "Provider removed: $name"
+}
+
+config_cmd() {
+    local sub="${1:-}"
+    shift || true
+    case "$sub" in
+        add) config_add "$@" ;;
+        ls|list) config_ls ;;
+        rm|remove) config_rm "$@" ;;
+        *) usage_config; return 1 ;;
+    esac
+}
+
+# #----TUI----
+usage_tui() {
+    cat <<'EOF'
+Usage:
+  clash tui [ARGS]    Run the built TUI binary, forwarding ARGS
+  clash tui --dev     Run TUI through cargo run
+  clash tui --build   Build TUI release binary
+  clash tui --clean   Clean TUI cargo cache only
+EOF
+}
+
+require_tui_dir() {
+    [ -d "$TUI_DIR" ] || die "TUI 目录不存在：$TUI_DIR"
+    [ -f "$TUI_DIR/Cargo.toml" ] || die "TUI Cargo.toml 不存在：$TUI_DIR/Cargo.toml"
+}
+
+require_cargo() {
+    command -v cargo >/dev/null 2>&1 || die "需要 cargo 才能构建或开发运行 TUI"
+}
+
+tui_dev() {
+    require_tui_dir || return 1
+    require_cargo || return 1
+    if [ "$#" -eq 0 ]; then
+        set -- -d "$CLASH_DIR"
+    fi
+    (cd "$TUI_DIR" && cargo run -- "$@")
+}
+
+tui_build() {
+    require_tui_dir || return 1
+    require_cargo || return 1
+
+    (cd "$TUI_DIR" && cargo build --release) || return 1
+    mkdir -p "$TUI_BIN_DIR" || return 1
+    cp "$TUI_DIR/target/release/clash-tui" "$TUI_BIN" || return 1
+    chmod +x "$TUI_BIN" || return 1
+    info "TUI built: $TUI_BIN"
+}
+
+tui_run() {
+    require_tui_dir || return 1
+    [ -x "$TUI_BIN" ] || die "TUI 尚未安装：请先运行 clash tui --build 或 ./shell/download.sh"
+    if [ "$#" -eq 0 ]; then
+        set -- -d "$CLASH_DIR"
+    fi
+    (cd "$TUI_DIR" && "$TUI_BIN" "$@")
+}
+
+tui_clean() {
+    require_tui_dir || return 1
+    require_cargo || return 1
+
+    (cd "$TUI_DIR" && cargo clean) || return 1
+    info "TUI cargo cache cleaned"
+}
+
+tui_cmd() {
+    local opt="${1:-}"
+    case "$opt" in
+        "") tui_run ;;
+        --dev) shift; tui_dev "$@" ;;
+        --build) tui_build ;;
+        --clean) tui_clean ;;
+        -h|--help|help) usage_tui ;;
+        *) tui_run "$@" ;;
+    esac
+}
+
+# #----帮助----
+usage() {
+    cat <<'EOF'
+Usage:
+  clash                 Show short status
+  clash status          Show detailed status
+  clash on              Start mihomo in normal mode and export proxy env
+  clash tun             Start mihomo in TUN mode with sudo validation
+  clash off             Stop mihomo and unset proxy env
+  clash env             Sync current shell proxy env with mihomo state
+  clash log             Follow mihomo.log with less +F
+  clash tui             Run/build/develop the terminal UI
+  clash config add      Add provider to config.yaml
+  clash config ls       List provider names and URLs
+  clash config rm       Remove provider from config.yaml
+EOF
+}
+
+# #----主入口----
+main() {
+    local cmd="${1:-}"
+    if [ $# -gt 0 ]; then
+        shift
+    fi
+
+    case "$cmd" in
+        "") short_status ;;
+        on) start_normal ;;
+        tun) start_tun ;;
+        off) stop_clash ;;
+        env) sync_env ;;
+        status) status_detail ;;
+        log) show_log ;;
+        tui) tui_cmd "$@" ;;
+        config) config_cmd "$@" ;;
+        help|-h|--help) usage ;;
+        *) usage; return 1 ;;
+    esac
+}
+
+main "$@"

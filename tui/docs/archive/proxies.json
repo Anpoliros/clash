@@ -1,0 +1,2940 @@
+{
+    "proxies": {
+        "COMPATIBLE": {
+            "alive": true,
+            "dialer-proxy": "",
+            "extra": {},
+            "history": [],
+            "id": "1f149e0f-21b0-614f-b94a-dae0ff5cbe23",
+            "interface": "",
+            "mptcp": false,
+            "name": "COMPATIBLE",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Compatible",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "DIRECT": {
+            "alive": true,
+            "dialer-proxy": "",
+            "extra": {},
+            "history": [],
+            "id": "1f149e0f-21b0-6687-ae0c-3d0816227ead",
+            "interface": "",
+            "mptcp": false,
+            "name": "DIRECT",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Direct",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "GLOBAL": {
+            "alive": true,
+            "all": [
+                "DIRECT",
+                "REJECT",
+                "节点选择",
+                "自动选择",
+                "全部节点"
+            ],
+            "dialer-proxy": "",
+            "extra": {},
+            "hidden": false,
+            "history": [],
+            "icon": "",
+            "interface": "",
+            "mptcp": false,
+            "name": "GLOBAL",
+            "now": "DIRECT",
+            "routing-mark": 0,
+            "smux": false,
+            "testUrl": "",
+            "tfo": false,
+            "type": "Selector",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "PASS": {
+            "alive": true,
+            "dialer-proxy": "",
+            "extra": {},
+            "history": [],
+            "id": "1f149e0f-21b0-6aa9-b19f-b4ca096f46fe",
+            "interface": "",
+            "mptcp": false,
+            "name": "PASS",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Pass",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "REJECT": {
+            "alive": true,
+            "dialer-proxy": "",
+            "extra": {},
+            "history": [],
+            "id": "1f149e0f-21b0-6b99-a53c-5f40789cd873",
+            "interface": "",
+            "mptcp": false,
+            "name": "REJECT",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Reject",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "REJECT-DROP": {
+            "alive": true,
+            "dialer-proxy": "",
+            "extra": {},
+            "history": [],
+            "id": "1f149e0f-21b0-6c7b-969e-830eec16f2b6",
+            "interface": "",
+            "mptcp": false,
+            "name": "REJECT-DROP",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "RejectDrop",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇦🇷 阿根廷A01": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.272712146+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.272712146+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b0-6d75-a33e-969b5a6b61e4",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇦🇷 阿根廷A01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇦🇺 澳大利亚A01": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:05.273577009+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:05.273577009+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b0-6f20-99ad-3de87d017c13",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇦🇺 澳大利亚A01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇨🇦 加拿大A01": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:05.273738633+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:05.273738633+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b1-6049-8344-29d465c70323",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇨🇦 加拿大A01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇨🇳 台湾A01 | IEPL | x2": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.27296482+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.27296482+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b1-6163-96ff-b72f2aa86c9b",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇨🇳 台湾A01 | IEPL | x2",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇩🇪 德国A01": {
+            "alive": true,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": true,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.904423004+08:00",
+                            "delay": 707
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.904423004+08:00",
+                    "delay": 707
+                }
+            ],
+            "id": "1f149e0f-21b1-6275-a1ee-7b946964a0d6",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇩🇪 德国A01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇫🇷 法国A01": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:05.273558731+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:05.273558731+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b1-6387-a7d6-b6d4d2dba7a9",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇫🇷 法国A01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇬🇧 英国A01": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.272906657+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.272906657+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b1-648e-88c6-ce591154881b",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇬🇧 英国A01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇭🇰 香港A01": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.271634059+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.271634059+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b1-65d2-8de8-c8c12959cf46",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇭🇰 香港A01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇭🇰 香港A02 | IEPL": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.271910961+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.271910961+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b1-66e0-81b0-d2115c376925",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇭🇰 香港A02 | IEPL",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇭🇰 香港A03 | IEPL": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.271624473+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.271624473+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b1-67ed-adc1-a763ba6e779b",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇭🇰 香港A03 | IEPL",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇭🇰 香港A04 | IEPL": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.271745437+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.271745437+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b1-68fb-83dc-33491eccb320",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇭🇰 香港A04 | IEPL",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇭🇰 香港A05 | IEPL": {
+            "alive": true,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": true,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.096551233+08:00",
+                            "delay": 825
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.096551233+08:00",
+                    "delay": 825
+                }
+            ],
+            "id": "1f149e0f-21b1-69f6-bc6a-652ef886b9b6",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇭🇰 香港A05 | IEPL",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇭🇰 香港A06 | x0.8": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.096896995+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.096896995+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b1-6b12-8f6e-4a83244748d8",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇭🇰 香港A06 | x0.8",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇭🇰 香港A07 | x0.8": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.271988452+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.271988452+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b1-6c0f-bead-51ac3ed3e6c9",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇭🇰 香港A07 | x0.8",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇭🇰 香港A08 | x0.8": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.272093573+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.272093573+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b1-6d0e-98cd-a06c6d80ae4e",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇭🇰 香港A08 | x0.8",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇭🇰 香港A09 | IEPL": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.272113434+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.272113434+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b1-6e1d-b80d-ab26fb237ecd",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇭🇰 香港A09 | IEPL",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vmess",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[ikuuu]🇭🇰 香港A10 | IEPL": {
+            "alive": true,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": true,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.806308788+08:00",
+                            "delay": 534
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.806308788+08:00",
+                    "delay": 534
+                }
+            ],
+            "id": "1f149e0f-21b1-6f3f-bf2e-f508a8ddd4c6",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇭🇰 香港A10 | IEPL",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vmess",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[ikuuu]🇭🇰 香港A11 | IEPL": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.806967293+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.806967293+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b2-6073-9205-a95fbe058561",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇭🇰 香港A11 | IEPL",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vmess",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[ikuuu]🇮🇳 印度A01": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:05.098770641+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:05.098770641+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b2-61a2-a013-24371d76f251",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇮🇳 印度A01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇯🇵 免费-日本1-Ver.7": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:05.273719628+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:05.273719628+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b2-62b9-8321-9d1665339de5",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇯🇵 免费-日本1-Ver.7",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vmess",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[ikuuu]🇯🇵 免费-日本2-Ver.8": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:05.494755808+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:05.494755808+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b2-63bd-b920-3b21e7edc22f",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇯🇵 免费-日本2-Ver.8",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vmess",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[ikuuu]🇯🇵 免费-日本3-Ver.7": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:05.853269983+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:05.853269983+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b2-64c1-b26c-a40f32e0517b",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇯🇵 免费-日本3-Ver.7",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vmess",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[ikuuu]🇯🇵 免费-日本4-Ver.8": {
+            "alive": true,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": true,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:05.882583743+08:00",
+                            "delay": 978
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:05.882583743+08:00",
+                    "delay": 978
+                }
+            ],
+            "id": "1f149e0f-21b2-65c5-a183-023f0448ff17",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇯🇵 免费-日本4-Ver.8",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vmess",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[ikuuu]🇯🇵 免费-日本5-Ver.9": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:05.977956302+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:05.977956302+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b2-66c7-b7c4-4e25d866352c",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇯🇵 免费-日本5-Ver.9",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vmess",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[ikuuu]🇯🇵 免费-日本6-Ver.8": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:06.099858918+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:06.099858918+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b2-67c4-aac3-4bbab1a7b2c6",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇯🇵 免费-日本6-Ver.8",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vmess",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[ikuuu]🇯🇵 免费-日本7-Ver.2": {
+            "alive": true,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": true,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:06.199047411+08:00",
+                            "delay": 942
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:06.199047411+08:00",
+                    "delay": 942
+                }
+            ],
+            "id": "1f149e0f-21b2-68cb-b71a-d07bba16d58d",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇯🇵 免费-日本7-Ver.2",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vmess",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[ikuuu]🇯🇵 日本A01 | IEPL": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.272009601+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.272009601+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b2-69cb-8f98-9f6325472406",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇯🇵 日本A01 | IEPL",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇯🇵 日本A02 | IEPL": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.27181565+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.27181565+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b2-6ac9-b059-488440e7a5b9",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇯🇵 日本A02 | IEPL",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇯🇵 日本A03 | IEPL": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.271940254+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.271940254+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b2-6bd3-ad1b-52e4e27669f4",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇯🇵 日本A03 | IEPL",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇯🇵 日本A04 | IEPL": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.271625879+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.271625879+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b2-6cda-9fa8-ac92ef2132c2",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇯🇵 日本A04 | IEPL",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇯🇵 日本A05 | 下载专用 | x0.01": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.271439484+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.271439484+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b2-6ddf-94c1-d035990c7910",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇯🇵 日本A05 | 下载专用 | x0.01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vmess",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[ikuuu]🇯🇵 日本A06 | 下载专用 | x0.01": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.272243379+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.272243379+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b2-6ee3-9d34-59c27f84a7e0",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇯🇵 日本A06 | 下载专用 | x0.01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vmess",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[ikuuu]🇯🇵 日本A07 | IEPL": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.272215068+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.272215068+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b3-608f-80a2-71c9b1172f2d",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇯🇵 日本A07 | IEPL",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇯🇵 日本A08 | IEPL": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.272065846+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.272065846+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b3-6195-8d77-2b7898dc942f",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇯🇵 日本A08 | IEPL",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇯🇵 日本A09 | IEPL": {
+            "alive": true,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": true,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.196068084+08:00",
+                            "delay": 924
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.196068084+08:00",
+                    "delay": 924
+                }
+            ],
+            "id": "1f149e0f-21b3-628f-8fcb-f21f18bd982e",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇯🇵 日本A09 | IEPL",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇯🇵 日本A10 | IEPL": {
+            "alive": true,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": true,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.851799149+08:00",
+                            "delay": 579
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.851799149+08:00",
+                    "delay": 579
+                }
+            ],
+            "id": "1f149e0f-21b3-63a2-b077-4b357058eed9",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇯🇵 日本A10 | IEPL",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇯🇵 日本A11 | IEPL": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.851979323+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.851979323+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b3-64ad-bbaa-c15ba5ac01b4",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇯🇵 日本A11 | IEPL",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇰🇷 韩国A01": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.977119547+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.977119547+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b3-65bd-ac8c-88f9ee08b418",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇰🇷 韩国A01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇷🇺 俄罗斯A01": {
+            "alive": true,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": true,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.493729941+08:00",
+                            "delay": 686
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.493729941+08:00",
+                    "delay": 686
+                }
+            ],
+            "id": "1f149e0f-21b3-66bf-93c7-3ed89b8243cc",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇷🇺 俄罗斯A01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇸🇬 新加坡A01 | IEPL | x2": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.097985324+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.097985324+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b3-67c4-8fdb-4bb4e52f47f2",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇸🇬 新加坡A01 | IEPL | x2",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇸🇬 新加坡A02 | IEPL | x2": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.197221349+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.197221349+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b3-693c-91f0-afa85112d759",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇸🇬 新加坡A02 | IEPL | x2",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇸🇬 新加坡A03 | IEPL | x2": {
+            "alive": true,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": true,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.976154208+08:00",
+                            "delay": 704
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.976154208+08:00",
+                    "delay": 704
+                }
+            ],
+            "id": "1f149e0f-21b3-6a39-a587-c31c8af9fa5a",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇸🇬 新加坡A03 | IEPL | x2",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇹🇷 土耳其A01": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.852707349+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.852707349+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b3-6b35-936a-9769878e771c",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇹🇷 土耳其A01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇺🇦 乌克兰A01": {
+            "alive": true,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": true,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:05.255962799+08:00",
+                            "delay": 982
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:05.255962799+08:00",
+                    "delay": 982
+                }
+            ],
+            "id": "1f149e0f-21b3-6c29-afce-c9695fc33186",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇺🇦 乌克兰A01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇺🇲 美国A01 | IEPL | x1.5": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.272789772+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.272789772+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b3-6d1a-bcbd-bb8bfec9955a",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇺🇲 美国A01 | IEPL | x1.5",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[ikuuu]🇺🇲 美国A02 | IEPL | x1.5": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.27267334+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.27267334+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b3-6e0e-ba2f-524f6be1d1f1",
+            "interface": "",
+            "mptcp": false,
+            "name": "[ikuuu]🇺🇲 美国A02 | IEPL | x1.5",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Shadowsocks",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[kitty]剩余流量：127.76 GB": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.248436836+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.248436836+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b3-6f04-b283-67ecf547b99a",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]剩余流量：127.76 GB",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vless",
+            "udp": true,
+            "uot": true,
+            "xudp": true
+        },
+        "[kitty]套餐到期：2026-06-04": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.24853719+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.24853719+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b3-6ffb-a262-082493b47036",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]套餐到期：2026-06-04",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vless",
+            "udp": true,
+            "uot": true,
+            "xudp": true
+        },
+        "[kitty]距离下次重置剩余：29 天": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.248524813+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.248524813+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b4-60ea-b277-04831cbb169a",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]距离下次重置剩余：29 天",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vless",
+            "udp": true,
+            "uot": true,
+            "xudp": true
+        },
+        "[kitty]🇩🇪Deutschland 01 IPv6": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:05.251242597+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:05.251242597+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b4-61d4-ae54-09a18566aba8",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇩🇪Deutschland 01 IPv6",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vless",
+            "udp": true,
+            "uot": true,
+            "xudp": true
+        },
+        "[kitty]🇩🇪Deutschland 02 IPv6": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:05.251186832+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:05.251186832+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b4-62c7-8229-98ae0e84424b",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇩🇪Deutschland 02 IPv6",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vless",
+            "udp": true,
+            "uot": true,
+            "xudp": true
+        },
+        "[kitty]🇬🇧United Kingdom 01": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.249641799+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.249641799+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b4-63ac-9abe-8623b742829e",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇬🇧United Kingdom 01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vless",
+            "udp": true,
+            "uot": true,
+            "xudp": true
+        },
+        "[kitty]🇬🇧United Kingdom 02": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.250463288+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.250463288+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b4-64a2-b7aa-8b0f4d4f05b0",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇬🇧United Kingdom 02",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vless",
+            "udp": true,
+            "uot": true,
+            "xudp": true
+        },
+        "[kitty]🇬🇧United Kingdom 03": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.250544125+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.250544125+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b4-6581-84e1-021145043f6c",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇬🇧United Kingdom 03",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vless",
+            "udp": true,
+            "uot": true,
+            "xudp": true
+        },
+        "[kitty]🇬🇧United Kingdom 04": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.250398459+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.250398459+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b4-666f-a9e8-88ed5ccbbe51",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇬🇧United Kingdom 04",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vless",
+            "udp": true,
+            "uot": true,
+            "xudp": true
+        },
+        "[kitty]🇭🇰Hong Kong 01 [Home]": {
+            "alive": true,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": true,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.827867931+08:00",
+                            "delay": 577
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.827867931+08:00",
+                    "delay": 577
+                }
+            ],
+            "id": "1f149e0f-21b4-6756-a15e-d787446388e7",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇭🇰Hong Kong 01 [Home]",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vless",
+            "udp": true,
+            "uot": true,
+            "xudp": true
+        },
+        "[kitty]🇭🇰Hong Kong 02 [Home]": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.250635391+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.250635391+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b4-6850-9c0d-d3072268d937",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇭🇰Hong Kong 02 [Home]",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vless",
+            "udp": true,
+            "uot": true,
+            "xudp": true
+        },
+        "[kitty]🇭🇰Hong Kong 03": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.250556877+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.250556877+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b4-6952-b0e7-28f7f9d52f07",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇭🇰Hong Kong 03",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "AnyTLS",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[kitty]🇭🇰Hong Kong 04": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.250511923+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.250511923+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b4-6a42-947b-bc7fecaa38b3",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇭🇰Hong Kong 04",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "AnyTLS",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[kitty]🇭🇰Hong Kong 05": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.250735303+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.250735303+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b4-6b25-9304-817e67d03ce3",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇭🇰Hong Kong 05",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "AnyTLS",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[kitty]🇭🇰Hong Kong 06": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.250577163+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.250577163+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b4-6c18-a925-2c6f8aa4609d",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇭🇰Hong Kong 06",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "AnyTLS",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[kitty]🇯🇵Japan 01": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.248525287+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.248525287+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b4-6d0a-b6bd-f5080134eccd",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇯🇵Japan 01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "AnyTLS",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[kitty]🇯🇵Japan 02": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.249614501+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.249614501+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b4-6df1-a940-a3491bf502bf",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇯🇵Japan 02",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "AnyTLS",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[kitty]🇯🇵Japan 03": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.249801463+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.249801463+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b4-6ed4-aef1-1cc12d92a65d",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇯🇵Japan 03",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "AnyTLS",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[kitty]🇯🇵Japan 04": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.249892131+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.249892131+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b4-6fc7-be66-1a602a93ddc2",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇯🇵Japan 04",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "AnyTLS",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[kitty]🇯🇵Japan 05": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.24964525+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.24964525+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b5-60b3-92c1-e1705e5fea83",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇯🇵Japan 05",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Hysteria2",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[kitty]🇯🇵Japan 06": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.249725703+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.249725703+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b5-61a5-89f9-6d10fb16bffb",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇯🇵Japan 06",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Hysteria2",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "[kitty]🇰🇷Korea 01": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.24991175+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.24991175+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b5-6288-8f46-fcb404045803",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇰🇷Korea 01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "AnyTLS",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[kitty]🇰🇷Korea 02": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.250089517+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.250089517+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b5-6369-a214-45031c923e55",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇰🇷Korea 02",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "AnyTLS",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[kitty]🇳🇱Netherlands 01": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.249467246+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.249467246+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b5-6454-b4b4-02fdc2ff1d36",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇳🇱Netherlands 01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vless",
+            "udp": true,
+            "uot": true,
+            "xudp": true
+        },
+        "[kitty]🇳🇱Netherlands 02": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:03.249663515+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:03.249663515+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b5-653f-8733-7a484fa9c39c",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇳🇱Netherlands 02",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vless",
+            "udp": true,
+            "uot": true,
+            "xudp": true
+        },
+        "[kitty]🇸🇬Singapore 01": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.248611476+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.248611476+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b5-6628-ae2c-2b4610ea02a3",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇸🇬Singapore 01",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "AnyTLS",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[kitty]🇸🇬Singapore 02": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.248577028+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.248577028+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b5-674f-8636-d8a185a53bc6",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇸🇬Singapore 02",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "AnyTLS",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[kitty]🇸🇬Singapore 03": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.24849235+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.24849235+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b5-6838-88e2-541bf42af7a7",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇸🇬Singapore 03",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "AnyTLS",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[kitty]🇸🇬Singapore 04": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.248683299+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.248683299+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b5-6935-8baa-798d42781f04",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇸🇬Singapore 04",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "AnyTLS",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[kitty]🇹🇼Taiwan 01 [Home]": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.250265764+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.250265764+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b5-6a2c-83ec-533ab1d919c4",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇹🇼Taiwan 01 [Home]",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vless",
+            "udp": true,
+            "uot": true,
+            "xudp": true
+        },
+        "[kitty]🇹🇼Taiwan 02 [Home]": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:04.828332546+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:04.828332546+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b5-6b18-83ad-82e0cbcd6fde",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇹🇼Taiwan 02 [Home]",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vless",
+            "udp": true,
+            "uot": true,
+            "xudp": true
+        },
+        "[kitty]🇹🇼Taiwan 03": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:05.251299874+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:05.251299874+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b5-6bff-9edc-a06a9eda1675",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇹🇼Taiwan 03",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "AnyTLS",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[kitty]🇹🇼Taiwan 04": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:05.251195388+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:05.251195388+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b5-6cec-9036-f0c8de93d3a9",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇹🇼Taiwan 04",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "AnyTLS",
+            "udp": true,
+            "uot": true,
+            "xudp": false
+        },
+        "[kitty]🇺🇸United States 03": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.24843672+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.24843672+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b5-6dd1-becb-5ccc71e9f5ce",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇺🇸United States 03",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vless",
+            "udp": true,
+            "uot": true,
+            "xudp": true
+        },
+        "[kitty]🇺🇸United States 04": {
+            "alive": false,
+            "dialer-proxy": "",
+            "extra": {
+                "https://cp.cloudflare.com": {
+                    "alive": false,
+                    "history": [
+                        {
+                            "time": "2026-05-07T14:47:02.248456279+08:00",
+                            "delay": 0
+                        }
+                    ]
+                }
+            },
+            "history": [
+                {
+                    "time": "2026-05-07T14:47:02.248456279+08:00",
+                    "delay": 0
+                }
+            ],
+            "id": "1f149e0f-21b5-6ebc-83ac-41bb59a6e7df",
+            "interface": "",
+            "mptcp": false,
+            "name": "[kitty]🇺🇸United States 04",
+            "routing-mark": 0,
+            "smux": false,
+            "tfo": false,
+            "type": "Vless",
+            "udp": true,
+            "uot": true,
+            "xudp": true
+        },
+        "全部节点": {
+            "alive": true,
+            "all": [
+                "[kitty]剩余流量：127.76 GB",
+                "[kitty]距离下次重置剩余：29 天",
+                "[kitty]套餐到期：2026-06-04",
+                "[kitty]🇺🇸United States 03",
+                "[kitty]🇺🇸United States 04",
+                "[kitty]🇸🇬Singapore 01",
+                "[kitty]🇸🇬Singapore 02",
+                "[kitty]🇸🇬Singapore 03",
+                "[kitty]🇸🇬Singapore 04",
+                "[kitty]🇯🇵Japan 01",
+                "[kitty]🇯🇵Japan 02",
+                "[kitty]🇯🇵Japan 03",
+                "[kitty]🇯🇵Japan 04",
+                "[kitty]🇯🇵Japan 05",
+                "[kitty]🇯🇵Japan 06",
+                "[kitty]🇰🇷Korea 01",
+                "[kitty]🇰🇷Korea 02",
+                "[kitty]🇳🇱Netherlands 01",
+                "[kitty]🇳🇱Netherlands 02",
+                "[kitty]🇬🇧United Kingdom 01",
+                "[kitty]🇬🇧United Kingdom 02",
+                "[kitty]🇬🇧United Kingdom 03",
+                "[kitty]🇬🇧United Kingdom 04",
+                "[kitty]🇭🇰Hong Kong 01 [Home]",
+                "[kitty]🇭🇰Hong Kong 02 [Home]",
+                "[kitty]🇭🇰Hong Kong 03",
+                "[kitty]🇭🇰Hong Kong 04",
+                "[kitty]🇭🇰Hong Kong 05",
+                "[kitty]🇭🇰Hong Kong 06",
+                "[kitty]🇹🇼Taiwan 01 [Home]",
+                "[kitty]🇹🇼Taiwan 02 [Home]",
+                "[kitty]🇹🇼Taiwan 03",
+                "[kitty]🇹🇼Taiwan 04",
+                "[kitty]🇩🇪Deutschland 01 IPv6",
+                "[kitty]🇩🇪Deutschland 02 IPv6",
+                "[ikuuu]🇭🇰 香港A01",
+                "[ikuuu]🇯🇵 日本A01 | IEPL",
+                "[ikuuu]🇭🇰 香港A02 | IEPL",
+                "[ikuuu]🇯🇵 日本A02 | IEPL",
+                "[ikuuu]🇭🇰 香港A03 | IEPL",
+                "[ikuuu]🇯🇵 日本A03 | IEPL",
+                "[ikuuu]🇭🇰 香港A04 | IEPL",
+                "[ikuuu]🇯🇵 日本A04 | IEPL",
+                "[ikuuu]🇭🇰 香港A05 | IEPL",
+                "[ikuuu]🇯🇵 日本A05 | 下载专用 | x0.01",
+                "[ikuuu]🇭🇰 香港A06 | x0.8",
+                "[ikuuu]🇯🇵 日本A06 | 下载专用 | x0.01",
+                "[ikuuu]🇭🇰 香港A07 | x0.8",
+                "[ikuuu]🇯🇵 日本A07 | IEPL",
+                "[ikuuu]🇭🇰 香港A08 | x0.8",
+                "[ikuuu]🇯🇵 日本A08 | IEPL",
+                "[ikuuu]🇭🇰 香港A09 | IEPL",
+                "[ikuuu]🇯🇵 日本A09 | IEPL",
+                "[ikuuu]🇭🇰 香港A10 | IEPL",
+                "[ikuuu]🇯🇵 日本A10 | IEPL",
+                "[ikuuu]🇭🇰 香港A11 | IEPL",
+                "[ikuuu]🇯🇵 日本A11 | IEPL",
+                "[ikuuu]🇸🇬 新加坡A01 | IEPL | x2",
+                "[ikuuu]🇸🇬 新加坡A02 | IEPL | x2",
+                "[ikuuu]🇸🇬 新加坡A03 | IEPL | x2",
+                "[ikuuu]🇨🇳 台湾A01 | IEPL | x2",
+                "[ikuuu]🇺🇲 美国A01 | IEPL | x1.5",
+                "[ikuuu]🇺🇲 美国A02 | IEPL | x1.5",
+                "[ikuuu]🇬🇧 英国A01",
+                "[ikuuu]🇦🇷 阿根廷A01",
+                "[ikuuu]🇷🇺 俄罗斯A01",
+                "[ikuuu]🇹🇷 土耳其A01",
+                "[ikuuu]🇰🇷 韩国A01",
+                "[ikuuu]🇮🇳 印度A01",
+                "[ikuuu]🇩🇪 德国A01",
+                "[ikuuu]🇨🇦 加拿大A01",
+                "[ikuuu]🇦🇺 澳大利亚A01",
+                "[ikuuu]🇫🇷 法国A01",
+                "[ikuuu]🇺🇦 乌克兰A01",
+                "[ikuuu]🇯🇵 免费-日本1-Ver.7",
+                "[ikuuu]🇯🇵 免费-日本2-Ver.8",
+                "[ikuuu]🇯🇵 免费-日本3-Ver.7",
+                "[ikuuu]🇯🇵 免费-日本4-Ver.8",
+                "[ikuuu]🇯🇵 免费-日本5-Ver.9",
+                "[ikuuu]🇯🇵 免费-日本6-Ver.8",
+                "[ikuuu]🇯🇵 免费-日本7-Ver.2"
+            ],
+            "dialer-proxy": "",
+            "extra": {},
+            "hidden": false,
+            "history": [],
+            "icon": "",
+            "interface": "",
+            "mptcp": false,
+            "name": "全部节点",
+            "now": "[kitty]🇺🇸United States 04",
+            "routing-mark": 0,
+            "smux": false,
+            "testUrl": "https://cp.cloudflare.com",
+            "tfo": false,
+            "type": "Selector",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "自动选择": {
+            "alive": true,
+            "all": [
+                "[kitty]剩余流量：127.76 GB",
+                "[kitty]距离下次重置剩余：29 天",
+                "[kitty]套餐到期：2026-06-04",
+                "[kitty]🇺🇸United States 03",
+                "[kitty]🇺🇸United States 04",
+                "[kitty]🇸🇬Singapore 01",
+                "[kitty]🇸🇬Singapore 02",
+                "[kitty]🇸🇬Singapore 03",
+                "[kitty]🇸🇬Singapore 04",
+                "[kitty]🇯🇵Japan 01",
+                "[kitty]🇯🇵Japan 02",
+                "[kitty]🇯🇵Japan 03",
+                "[kitty]🇯🇵Japan 04",
+                "[kitty]🇯🇵Japan 05",
+                "[kitty]🇯🇵Japan 06",
+                "[kitty]🇰🇷Korea 01",
+                "[kitty]🇰🇷Korea 02",
+                "[kitty]🇳🇱Netherlands 01",
+                "[kitty]🇳🇱Netherlands 02",
+                "[kitty]🇬🇧United Kingdom 01",
+                "[kitty]🇬🇧United Kingdom 02",
+                "[kitty]🇬🇧United Kingdom 03",
+                "[kitty]🇬🇧United Kingdom 04",
+                "[kitty]🇭🇰Hong Kong 01 [Home]",
+                "[kitty]🇭🇰Hong Kong 02 [Home]",
+                "[kitty]🇭🇰Hong Kong 03",
+                "[kitty]🇭🇰Hong Kong 04",
+                "[kitty]🇭🇰Hong Kong 05",
+                "[kitty]🇭🇰Hong Kong 06",
+                "[kitty]🇹🇼Taiwan 01 [Home]",
+                "[kitty]🇹🇼Taiwan 02 [Home]",
+                "[kitty]🇹🇼Taiwan 03",
+                "[kitty]🇹🇼Taiwan 04",
+                "[kitty]🇩🇪Deutschland 01 IPv6",
+                "[kitty]🇩🇪Deutschland 02 IPv6",
+                "[ikuuu]🇭🇰 香港A01",
+                "[ikuuu]🇯🇵 日本A01 | IEPL",
+                "[ikuuu]🇭🇰 香港A02 | IEPL",
+                "[ikuuu]🇯🇵 日本A02 | IEPL",
+                "[ikuuu]🇭🇰 香港A03 | IEPL",
+                "[ikuuu]🇯🇵 日本A03 | IEPL",
+                "[ikuuu]🇭🇰 香港A04 | IEPL",
+                "[ikuuu]🇯🇵 日本A04 | IEPL",
+                "[ikuuu]🇭🇰 香港A05 | IEPL",
+                "[ikuuu]🇯🇵 日本A05 | 下载专用 | x0.01",
+                "[ikuuu]🇭🇰 香港A06 | x0.8",
+                "[ikuuu]🇯🇵 日本A06 | 下载专用 | x0.01",
+                "[ikuuu]🇭🇰 香港A07 | x0.8",
+                "[ikuuu]🇯🇵 日本A07 | IEPL",
+                "[ikuuu]🇭🇰 香港A08 | x0.8",
+                "[ikuuu]🇯🇵 日本A08 | IEPL",
+                "[ikuuu]🇭🇰 香港A09 | IEPL",
+                "[ikuuu]🇯🇵 日本A09 | IEPL",
+                "[ikuuu]🇭🇰 香港A10 | IEPL",
+                "[ikuuu]🇯🇵 日本A10 | IEPL",
+                "[ikuuu]🇭🇰 香港A11 | IEPL",
+                "[ikuuu]🇯🇵 日本A11 | IEPL",
+                "[ikuuu]🇸🇬 新加坡A01 | IEPL | x2",
+                "[ikuuu]🇸🇬 新加坡A02 | IEPL | x2",
+                "[ikuuu]🇸🇬 新加坡A03 | IEPL | x2",
+                "[ikuuu]🇨🇳 台湾A01 | IEPL | x2",
+                "[ikuuu]🇺🇲 美国A01 | IEPL | x1.5",
+                "[ikuuu]🇺🇲 美国A02 | IEPL | x1.5",
+                "[ikuuu]🇬🇧 英国A01",
+                "[ikuuu]🇦🇷 阿根廷A01",
+                "[ikuuu]🇷🇺 俄罗斯A01",
+                "[ikuuu]🇹🇷 土耳其A01",
+                "[ikuuu]🇰🇷 韩国A01",
+                "[ikuuu]🇮🇳 印度A01",
+                "[ikuuu]🇩🇪 德国A01",
+                "[ikuuu]🇨🇦 加拿大A01",
+                "[ikuuu]🇦🇺 澳大利亚A01",
+                "[ikuuu]🇫🇷 法国A01",
+                "[ikuuu]🇺🇦 乌克兰A01",
+                "[ikuuu]🇯🇵 免费-日本1-Ver.7",
+                "[ikuuu]🇯🇵 免费-日本2-Ver.8",
+                "[ikuuu]🇯🇵 免费-日本3-Ver.7",
+                "[ikuuu]🇯🇵 免费-日本4-Ver.8",
+                "[ikuuu]🇯🇵 免费-日本5-Ver.9",
+                "[ikuuu]🇯🇵 免费-日本6-Ver.8",
+                "[ikuuu]🇯🇵 免费-日本7-Ver.2"
+            ],
+            "dialer-proxy": "",
+            "expectedStatus": "*",
+            "extra": {},
+            "fixed": "",
+            "hidden": false,
+            "history": [],
+            "icon": "",
+            "interface": "",
+            "mptcp": false,
+            "name": "自动选择",
+            "now": "[ikuuu]🇭🇰 香港A10 | IEPL",
+            "routing-mark": 0,
+            "smux": false,
+            "testUrl": "https://cp.cloudflare.com",
+            "tfo": false,
+            "type": "URLTest",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        },
+        "节点选择": {
+            "alive": true,
+            "all": [
+                "自动选择",
+                "全部节点"
+            ],
+            "dialer-proxy": "",
+            "extra": {},
+            "hidden": false,
+            "history": [],
+            "icon": "",
+            "interface": "",
+            "mptcp": false,
+            "name": "节点选择",
+            "now": "自动选择",
+            "routing-mark": 0,
+            "smux": false,
+            "testUrl": "",
+            "tfo": false,
+            "type": "Selector",
+            "udp": true,
+            "uot": false,
+            "xudp": false
+        }
+    }
+}

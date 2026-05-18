@@ -1,0 +1,14 @@
+*.pid
+*.log
+!.gitignore
+/archive
+
+/tui/target
+/tui/release
+/bin/clash-tui
+/release
+cache.db
+/mihomo/cache.db
+
+/providers/*
+/mihomo/providers/*
