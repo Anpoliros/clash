@@ -20,6 +20,7 @@ LOG_FILE="${CLASH_LOG:-$CLASH_DIR/mihomo.log}"
 TUI_DIR="${CLASH_TUI_DIR:-$PROJECT_DIR/tui}"
 TUI_BIN_DIR="${CLASH_TUI_BIN_DIR:-$PROJECT_DIR/bin}"
 TUI_BIN="$TUI_BIN_DIR/clash-tui"
+STATE_LOCK_DIR="$CLASH_DIR/.clash.lock"
 DEFAULT_PROXY_PORT=7890
 
 return_or_exit() {
@@ -42,6 +43,29 @@ info() {
 
 quiet() {
     [ "${CLASH_QUIET:-0}" = "1" ]
+}
+
+# #----状态锁----
+acquire_state_lock() {
+    local waited=0
+    mkdir -p "$CLASH_DIR" || return 1
+    while ! mkdir "$STATE_LOCK_DIR" 2>/dev/null; do
+        waited=$((waited + 1))
+        [ "$waited" -le 20 ] || die "clash 状态锁超时：$STATE_LOCK_DIR"
+        sleep 0.2
+    done
+}
+
+release_state_lock() {
+    rmdir "$STATE_LOCK_DIR" 2>/dev/null || true
+}
+
+with_state_lock() {
+    acquire_state_lock || return 1
+    "$@"
+    local code=$?
+    release_state_lock
+    return "$code"
 }
 
 # #----依赖与 YAML----
@@ -170,7 +194,18 @@ pid_value() {
 is_running() {
     local pid
     pid="$(pid_value)"
-    [ -n "$pid" ] && ps -p "$pid" >/dev/null 2>&1
+    if [ -n "$pid" ] && ps -p "$pid" >/dev/null 2>&1; then
+        return 0
+    fi
+    [ -n "$(own_mihomo_pids)" ]
+}
+
+own_mihomo_pids() {
+    ps -eo pid=,args= | awk -v project="$PROJECT_DIR" -v work="$CLASH_DIR" '
+        /mihomo/ && (index($0, "-d " work) || index($0, "-d " project)) {
+            print $1
+        }
+    '
 }
 
 running_mode() {
@@ -186,7 +221,10 @@ running_mode() {
 
 short_status() {
     if is_running; then
-        info "mihomo running | pid=$(pid_value) | mode=$(running_mode) | port=$(proxy_port)"
+        local pids
+        pids="$(own_mihomo_pids | paste -sd, -)"
+        [ -n "$pids" ] || pids="$(pid_value)"
+        info "mihomo running | pid=$pids | mode=$(running_mode) | port=$(proxy_port)"
     else
         info "mihomo stopped | mode=$(running_mode) | port=$(proxy_port)"
     fi
@@ -279,28 +317,58 @@ start_tun() {
     set_tun_enabled true || return 1
     info "[sudo] TUN 模式需要权限，正在验证..."
     sudo -v || return 1
+    if is_running; then
+        short_status
+        return 0
+    fi
     sudo bash -c "cd '$CLASH_DIR' && : > '$LOG_FILE' && nohup '$CLASH_BIN' -d '$CLASH_DIR' > '$LOG_FILE' 2>&1 & echo \$! > '$PID_FILE'"
     unset_proxy_env
     info "mihomo started (tun) | pid=$(pid_value)"
 }
 
 stop_clash() {
-    if ! is_running; then
-        info "mihomo already stopped"
-        rm -f "$PID_FILE" 2>/dev/null || sudo rm -f "$PID_FILE" 2>/dev/null
-        unset_proxy_env
-        return 0
+    local pids pid alive
+    pids="$(own_mihomo_pids)"
+    pid="$(pid_value)"
+    if [ -n "$pid" ] && ps -p "$pid" >/dev/null 2>&1 && ! printf '%s\n' "$pids" | grep -qx "$pid"; then
+        pids="${pids:+$pids
+}$pid"
     fi
 
-    local pid
-    pid="$(pid_value)"
-    if kill "$pid" 2>/dev/null; then
-        info "mihomo stopped | pid=$pid"
+    if [ -z "$pids" ]; then
+        info "mihomo already stopped"
     else
-        info "[sudo] 当前进程可能由 root 启动，尝试 sudo kill..."
-        sudo kill "$pid" 2>/dev/null || return 1
-        info "mihomo stopped | pid=$pid"
+        info "Stopping mihomo pids: $(printf '%s\n' "$pids" | paste -sd, -)"
+        while IFS= read -r pid; do
+            [ -n "$pid" ] || continue
+            kill "$pid" 2>/dev/null || sudo kill "$pid" 2>/dev/null || true
+        done <<EOF
+$pids
+EOF
+        sleep 1
+
+        alive=""
+        while IFS= read -r pid; do
+            [ -n "$pid" ] || continue
+            if ps -p "$pid" >/dev/null 2>&1; then
+                alive="${alive:+$alive
+}$pid"
+            fi
+        done <<EOF
+$pids
+EOF
+
+        if [ -n "$alive" ]; then
+            info "[sudo] 强制停止残留 mihomo：$(printf '%s\n' "$alive" | paste -sd, -)"
+            while IFS= read -r pid; do
+                [ -n "$pid" ] || continue
+                kill -9 "$pid" 2>/dev/null || sudo kill -9 "$pid" 2>/dev/null || true
+            done <<EOF
+$alive
+EOF
+        fi
     fi
+
     rm -f "$PID_FILE" 2>/dev/null || sudo rm -f "$PID_FILE" 2>/dev/null
     unset_proxy_env
 }
@@ -415,6 +483,8 @@ Usage:
   clash tui --dev     Run TUI through cargo run
   clash tui --build   Build TUI release binary
   clash tui --clean   Clean TUI cargo cache only
+  clash tui --download rustup
+  clash tui --download VERSION [--github|--gitea]
 EOF
 }
 
@@ -464,6 +534,10 @@ tui_clean() {
     info "TUI cargo cache cleaned"
 }
 
+tui_download() {
+    "$SCRIPT_DIR/download.sh" "$@"
+}
+
 tui_cmd() {
     local opt="${1:-}"
     case "$opt" in
@@ -471,6 +545,7 @@ tui_cmd() {
         --dev) shift; tui_dev "$@" ;;
         --build) tui_build ;;
         --clean) tui_clean ;;
+        --download) shift; tui_download "$@" ;;
         -h|--help|help) usage_tui ;;
         *) tui_run "$@" ;;
     esac
@@ -503,9 +578,9 @@ main() {
 
     case "$cmd" in
         "") short_status ;;
-        on) start_normal ;;
-        tun) start_tun ;;
-        off) stop_clash ;;
+        on) with_state_lock start_normal ;;
+        tun) with_state_lock start_tun ;;
+        off) with_state_lock stop_clash ;;
         env) sync_env ;;
         status) status_detail ;;
         log) show_log ;;

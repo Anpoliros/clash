@@ -9,6 +9,7 @@
 /release
 cache.db
 /mihomo/cache.db
+/mihomo/.clash.lock/
 
 /providers/*
 /mihomo/providers/*

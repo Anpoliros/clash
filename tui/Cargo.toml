@@ -2,6 +2,7 @@
 name = "clash-tui"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.85"
 description = "Runtime-first mihomo terminal client"
 
 [dependencies]
