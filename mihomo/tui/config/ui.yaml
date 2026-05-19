@@ -1,0 +1,5 @@
+node_name_width: 22
+node_item_min_width: 30
+node_min_gap_width: 3
+node_reserve_width: 2
+node_column_gap_width: 4

@@ -3,10 +3,7 @@
 use std::time::Duration;
 
 use crossterm::event::{self, Event as CrosstermEvent, KeyEvent, MouseEvent};
-use tokio::{
-    io::{AsyncBufReadExt, AsyncRead, BufReader},
-    sync::mpsc,
-};
+use tokio::sync::mpsc;
 
 #[derive(Debug)]
 pub enum AppEvent {
@@ -48,19 +45,6 @@ pub fn spawn_log_bridge(
     tokio::spawn(async move {
         while let Some(line) = log_rx.recv().await {
             let _ = event_tx.send(AppEvent::Log(line));
-        }
-    });
-}
-
-// #----进程输出----
-pub fn spawn_reader<R>(reader: R, tx: mpsc::UnboundedSender<String>)
-where
-    R: AsyncRead + Unpin + Send + 'static,
-{
-    tokio::spawn(async move {
-        let mut lines = BufReader::new(reader).lines();
-        while let Ok(Some(line)) = lines.next_line().await {
-            let _ = tx.send(line);
         }
     });
 }

@@ -8,6 +8,7 @@ use std::{
 use anyhow::{Context, Result};
 
 use crate::{
+    config::app_config::{self, AppConfig},
     config::runtime_config::{self, RuntimeConfig},
     mihomo::{client::MihomoClient, process::MihomoProcess},
 };
@@ -15,6 +16,7 @@ use crate::{
 #[derive(Clone)]
 pub struct BootContext {
     pub config: RuntimeConfig,
+    pub app_config: AppConfig,
     pub client: MihomoClient,
     pub process: MihomoProcess,
 }
@@ -22,12 +24,9 @@ pub struct BootContext {
 // #----启动准备----
 pub async fn bootstrap(work_dir: PathBuf) -> Result<BootContext> {
     let source_config = find_config(&work_dir)?;
+    let app_config = app_config::load(&work_dir)?;
     let runtime_config = runtime_config::prepare(&source_config)?;
-    let process = MihomoProcess::new(
-        work_dir.clone(),
-        find_binary(&work_dir)?,
-        runtime_config.path.clone(),
-    );
+    let process = MihomoProcess::new(work_dir.clone());
     let client = MihomoClient::new(
         runtime_config.controller.clone(),
         runtime_config.secret.clone(),
@@ -35,6 +34,7 @@ pub async fn bootstrap(work_dir: PathBuf) -> Result<BootContext> {
 
     Ok(BootContext {
         config: runtime_config,
+        app_config,
         client,
         process,
     })
@@ -65,23 +65,4 @@ fn find_config(dir: &Path) -> Result<PathBuf> {
         .into_iter()
         .next()
         .context("未找到 mihomo YAML 配置")
-}
-
-fn find_binary(dir: &Path) -> Result<PathBuf> {
-    let mut bins: Vec<_> = fs::read_dir(dir)
-        .context("读取工作目录失败")?
-        .filter_map(|entry| entry.ok())
-        .map(|entry| entry.path())
-        .filter(|path| {
-            path.file_name()
-                .and_then(|v| v.to_str())
-                .map(|name| name == "mihomo" || name.starts_with("mihomo-"))
-                .unwrap_or(false)
-        })
-        .filter(|path| path.is_file())
-        .collect();
-    bins.sort();
-    bins.into_iter()
-        .next()
-        .ok_or_else(|| anyhow::anyhow!("未找到 mihomo 可执行文件"))
 }

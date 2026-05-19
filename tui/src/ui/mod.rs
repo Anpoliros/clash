@@ -5,12 +5,13 @@ pub mod theme;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     prelude::Frame,
-    style::Modifier,
+    style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Tabs},
+    widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
 };
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
-use crate::app::{App, Page, RowRef};
+use crate::app::{App, ConfigField, NodeLayout, Page, RowRef};
 
 use self::theme::Theme;
 
@@ -20,7 +21,7 @@ pub fn draw(frame: &mut Frame<'_>, app: &App) {
     let root = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),
+            Constraint::Length(2),
             Constraint::Min(1),
             Constraint::Length(1),
         ])
@@ -40,63 +41,141 @@ pub fn draw(frame: &mut Frame<'_>, app: &App) {
 }
 
 fn draw_tabs(frame: &mut Frame<'_>, area: Rect, app: &App, theme: &Theme) {
-    let selected = match app.ui.page {
-        Page::Proxies => 0,
-        Page::General => 1,
-        Page::Rules => 2,
+    let tab = |page, text: &'static str| {
+        let style = if app.ui.page == page {
+            theme.active.add_modifier(Modifier::BOLD)
+        } else {
+            theme.text
+        };
+        Span::styled(text, style)
     };
-    let tabs = Tabs::new(["Proxies", "General", "Rules"])
-        .select(selected)
-        .block(Block::default().borders(Borders::BOTTOM))
-        .style(theme.text)
-        .highlight_style(theme.active.add_modifier(Modifier::BOLD));
-    frame.render_widget(tabs, area);
+    let line = Line::from(vec![
+        Span::raw(" "),
+        tab(Page::Proxies, "Proxies"),
+        Span::raw("  "),
+        tab(Page::General, "General"),
+        Span::raw("  "),
+        tab(Page::Rules, "Rules"),
+    ]);
+    frame.render_widget(
+        Paragraph::new(line)
+            .block(Block::default().borders(Borders::BOTTOM))
+            .style(Style::default()),
+        area,
+    );
 }
 
 // #----General 页面----
 fn draw_general(frame: &mut Frame<'_>, area: Rect, app: &App, theme: &Theme) {
     let rows = vec![
-        line_toggle(
-            "Proxy",
-            app.runtime.proxy_enabled,
+        Line::from(Span::styled("Runtime", theme.header)),
+        selectable_line(
+            &format!(
+                "Proxy        {}",
+                if app.runtime.proxy_enabled {
+                    "on"
+                } else {
+                    "off"
+                }
+            ),
             app.ui.cursor == 0,
             theme,
         ),
-        line_toggle("TUN", app.runtime.tun_enabled, app.ui.cursor == 1, theme),
+        selectable_line(
+            &format!(
+                "TUN          {}",
+                if app.runtime.tun_enabled { "on" } else { "off" }
+            ),
+            app.ui.cursor == 1,
+            theme,
+        ),
+        selectable_line(
+            &format!(
+                "Proxy Port   {}",
+                app.runtime.proxy_port.map_or("-".into(), |v| v.to_string())
+            ),
+            app.ui.cursor == 2,
+            theme,
+        ),
+        selectable_line(
+            &format!("Manage Port  {}", app.runtime.manage_port),
+            app.ui.cursor == 3,
+            theme,
+        ),
+        selectable_line(
+            &format!("Node  {}", clean_node_name(&app.runtime.active_node)),
+            app.ui.cursor == 4,
+            theme,
+        ),
+        selectable_line(
+            &format!(
+                "Pid   {}",
+                app.runtime.pid.map_or("-".into(), |v| v.to_string())
+            ),
+            app.ui.cursor == 5,
+            theme,
+        ),
         Line::raw(""),
-        Line::raw(format!(
-            "Proxy Port   {}",
-            app.runtime.proxy_port.map_or("-".into(), |v| v.to_string())
-        )),
-        Line::raw(format!("Manage Port  {}", app.runtime.manage_port)),
+        Line::from(Span::styled("Layout", theme.header)),
+        editable_line(
+            "Node Name Width",
+            ConfigField::NodeNameWidth,
+            app.boot.app_config.node_name_width,
+            app.ui.cursor == 6,
+            app,
+            theme,
+        ),
+        editable_line(
+            "Item Min Width",
+            ConfigField::NodeItemMinWidth,
+            app.boot.app_config.node_item_min_width,
+            app.ui.cursor == 7,
+            app,
+            theme,
+        ),
+        editable_line(
+            "Min Gap Width",
+            ConfigField::NodeMinGapWidth,
+            app.boot.app_config.node_min_gap_width,
+            app.ui.cursor == 8,
+            app,
+            theme,
+        ),
+        editable_line(
+            "Reserve Width",
+            ConfigField::NodeReserveWidth,
+            app.boot.app_config.node_reserve_width,
+            app.ui.cursor == 9,
+            app,
+            theme,
+        ),
+        editable_line(
+            "Column Gap",
+            ConfigField::NodeColumnGapWidth,
+            app.boot.app_config.node_column_gap_width,
+            app.ui.cursor == 10,
+            app,
+            theme,
+        ),
         Line::raw(""),
-        Line::raw(format!(
-            "Node  {}",
-            clean_node_name(&app.runtime.active_node)
-        )),
-        Line::raw(format!(
-            "Pid   {}",
-            app.runtime.pid.map_or("-".into(), |v| v.to_string())
-        )),
-        selectable_line("Log   Enter 查看日志", app.ui.cursor == 5, theme),
-        Line::raw(""),
-        Line::raw(format!(
-            "mihomo {}",
-            app.mihomo
-                .version
-                .clone()
-                .unwrap_or_else(|| "未连接".into())
-        )),
+        Line::from(Span::styled("Actions", theme.header)),
+        selectable_line("Log          Enter 查看日志", app.ui.cursor == 11, theme),
+        selectable_line(
+            &format!(
+                "mihomo {}",
+                app.mihomo
+                    .version
+                    .clone()
+                    .unwrap_or_else(|| "未连接".into())
+            ),
+            app.ui.cursor == 12,
+            theme,
+        ),
     ];
     let panel = Paragraph::new(rows)
         .block(Block::default().title(" General ").borders(Borders::ALL))
         .style(theme.text);
     frame.render_widget(panel, area);
-}
-
-fn line_toggle(label: &str, enabled: bool, selected: bool, theme: &Theme) -> Line<'static> {
-    let mark = if enabled { "[x]" } else { "[ ]" };
-    selectable_line(&format!("{label:<8} {mark}"), selected, theme)
 }
 
 fn selectable_line(text: &str, selected: bool, theme: &Theme) -> Line<'static> {
@@ -105,6 +184,22 @@ fn selectable_line(text: &str, selected: bool, theme: &Theme) -> Line<'static> {
     } else {
         Line::raw(text.to_string())
     }
+}
+
+fn editable_line(
+    label: &str,
+    field: ConfigField,
+    value: u16,
+    selected: bool,
+    app: &App,
+    theme: &Theme,
+) -> Line<'static> {
+    let value = if app.ui.config_edit == Some(field) {
+        format!("{}_", app.ui.input_buffer)
+    } else {
+        value.to_string()
+    };
+    selectable_line(&format!("{label:<16} {value:>4}"), selected, theme)
 }
 
 // #----Proxies 页面----
@@ -122,7 +217,7 @@ fn draw_proxies(frame: &mut Frame<'_>, area: Rect, app: &App, theme: &Theme) {
     .style(theme.text);
     frame.render_widget(auto, chunks[0]);
 
-    let visible_rows = chunks[1].height.saturating_sub(2) as usize;
+    let visible_rows = chunks[1].height.saturating_sub(2).max(1) as usize;
     let items: Vec<ListItem> = app
         .rows
         .iter()
@@ -170,14 +265,21 @@ fn draw_proxies(frame: &mut Frame<'_>, area: Rect, app: &App, theme: &Theme) {
             }
             RowRef::NodeRow(provider_idx, row_start) => {
                 let provider = &app.mihomo.providers[*provider_idx];
-                let left = provider.nodes.get(*row_start);
-                let right = provider.nodes.get(row_start + 1);
-                ListItem::new(Line::from(vec![
-                    Span::raw("        "),
-                    node_span(left, idx == app.ui.cursor && app.ui.node_col == 0, theme),
-                    Span::raw("  "),
-                    node_span(right, idx == app.ui.cursor && app.ui.node_col == 1, theme),
-                ]))
+                let mut spans = vec![Span::raw("        ")];
+                for col in 0..app.ui.node_columns {
+                    if col > 0 {
+                        spans.push(Span::raw(
+                            " ".repeat(app.boot.app_config.node_column_gap_width as usize),
+                        ));
+                    }
+                    spans.push(node_span(
+                        provider.nodes.get(row_start + col),
+                        idx == app.ui.cursor && app.ui.node_col == col,
+                        app.node_layout(),
+                        theme,
+                    ));
+                }
+                ListItem::new(Line::from(spans))
             }
         })
         .collect();
@@ -188,33 +290,90 @@ fn draw_proxies(frame: &mut Frame<'_>, area: Rect, app: &App, theme: &Theme) {
     frame.render_widget(list, chunks[1]);
 }
 
-fn node_span<'a>(node: Option<&crate::app::NodeView>, selected: bool, theme: &Theme) -> Span<'a> {
+fn node_span<'a>(
+    node: Option<&crate::app::NodeView>,
+    selected: bool,
+    layout: NodeLayout,
+    theme: &Theme,
+) -> Span<'a> {
     let Some(node) = node else {
-        return Span::raw(format!("{:<28}", ""));
+        return Span::raw(" ".repeat(layout.item_width as usize));
     };
     let delay = node.delay.map_or("--ms".into(), |v| format!("{v}ms"));
-    let text = format!(
-        "[{:<16}] {:>5}",
-        compact_node_name(&clean_node_name(&node.name)),
-        delay
+    let delay_width = UnicodeWidthStr::width(delay.as_str());
+    let name = fit_middle_display_width(
+        &clean_node_name(&node.name),
+        layout.name_width.saturating_sub(2) as usize,
+        layout.reserve_width as usize,
     );
-    let style = if node.active {
-        theme.active.add_modifier(Modifier::BOLD)
-    } else if selected {
+    let name_box = pad_display_width(&format!("[{name}]"), layout.name_width as usize);
+    let gap_width = (layout.item_width as usize)
+        .saturating_sub(layout.name_width as usize)
+        .saturating_sub(delay_width)
+        .max(layout.min_gap_width as usize);
+    let text = format!("{name_box}{}{}", " ".repeat(gap_width), delay);
+    let style = if selected {
         theme.hover
+    } else if node.active {
+        theme.active.add_modifier(Modifier::BOLD)
     } else {
         theme.text
     };
-    Span::styled(format!("{text:<28}"), style)
+    Span::styled(text, style)
 }
 
-fn compact_node_name(name: &str) -> String {
-    let mut chars = name.chars();
-    let short: String = chars.by_ref().take(16).collect();
-    if chars.next().is_some() {
-        format!("{short}…")
+fn fit_middle_display_width(text: &str, width: usize, reserve_width: usize) -> String {
+    if UnicodeWidthStr::width(text) <= width {
+        return pad_display_width(text, width);
+    }
+
+    let ellipsis_width = 1;
+    let suffix = tail_by_display_width(
+        text,
+        reserve_width.min(width.saturating_sub(ellipsis_width)),
+    );
+    let suffix_width = UnicodeWidthStr::width(suffix.as_str());
+    let prefix_width = width
+        .saturating_sub(ellipsis_width)
+        .saturating_sub(suffix_width);
+    let mut out = String::new();
+    let mut used = 0;
+    for ch in text.chars() {
+        let ch_width = UnicodeWidthChar::width(ch).unwrap_or(0);
+        if used + ch_width > prefix_width {
+            break;
+        }
+        out.push(ch);
+        used += ch_width;
+    }
+    out.push('…');
+    out.push_str(&suffix);
+    pad_display_width(&out, width)
+}
+
+fn tail_by_display_width(text: &str, width: usize) -> String {
+    if width == 0 {
+        return String::new();
+    }
+    let mut chars = Vec::new();
+    let mut used = 0;
+    for ch in text.chars().rev() {
+        let ch_width = UnicodeWidthChar::width(ch).unwrap_or(0);
+        if used + ch_width > width {
+            break;
+        }
+        chars.push(ch);
+        used += ch_width;
+    }
+    chars.into_iter().rev().collect()
+}
+
+fn pad_display_width(text: &str, width: usize) -> String {
+    let used = UnicodeWidthStr::width(text);
+    if used >= width {
+        text.to_string()
     } else {
-        short
+        format!("{text}{}", " ".repeat(width - used))
     }
 }
 

@@ -6,7 +6,7 @@
 
 - 修改 `/tui/src` 下任何核心模块。
 - 更新 Rust 依赖、Cargo 配置或运行命令。
-- 调整 mihomo 工作目录、runtime 配置、TUN、日志或节点切换流程。
+- 调整 mihomo 工作目录、runtime 配置、TUI 偏好、日志或节点切换流程。
 - 需要复现用户在终端里的代理体验问题。
 
 ## 输入与产物
@@ -14,13 +14,13 @@
 输入：
 
 - `-d/--dir <mihomo-work-dir>`：mihomo 工作目录。
-- 工作目录中的 mihomo 二进制：文件名为 `mihomo` 或以 `mihomo-` 开头。
 - 工作目录中的 YAML 配置：优先 `config.yaml`、`config.yml`。
 
 运行时产物：
 
-- `~/.config/clash-tui/runtime.yaml`：由用户配置生成，TUI 可以修改其中 TUN 状态。
-- `<mihomo-work-dir>/mihomo.pid`：由 TUI 启动 mihomo 时写入，用于识别运行状态。
+- `~/.config/clash-tui/runtime.yaml`：由用户配置生成，TUI 不写回用户原始配置。
+- `<mihomo-work-dir>/tui/config/ui.yaml`：TUI 偏好配置。
+- `<mihomo-work-dir>/mihomo.pid`：由外部启动流程维护，TUI 只读取它来识别运行状态。
 
 ## 基础命令
 
@@ -40,17 +40,17 @@ cargo run -- -d /home/anpoliros/clash
 3. 修改代码后运行 `cargo fmt`。
 4. 运行 `cargo check` 确认类型和依赖无误。
 5. 使用真实 mihomo 工作目录运行 `cargo run -- -d <dir>`。
-6. 根据改动范围人工检查 General、Proxies、日志窗口、Proxy/TUN 开关或 Provider 操作。
+6. 根据改动范围人工检查 General、Proxies、日志窗口、节点布局配置或 Provider 操作。
 
 ## 手工检查清单
 
 | 改动范围 | 检查点 |
 | --- | --- |
-| CLI / bootstrap | 缺参、错误目录、缺配置、缺二进制时错误信息清晰 |
+| CLI / bootstrap | 缺参、错误目录、缺配置时错误信息清晰 |
 | runtime config | `runtime.yaml` 被生成；用户原始 `config.yaml` 未被写回 |
+| TUI config | `tui/config/ui.yaml` 被生成；General 中的布局参数可调且能持久化 |
 | mihomo client | controller 请求不走环境代理；secret 场景仍能认证 |
-| process | 启动后写入 `mihomo.pid`；停止后移除；stdout/stderr 进入日志 |
-| TUN | 开启前触发 `sudo -v`；reload 失败时状态栏给出原因 |
+| process | 读取 `mihomo.pid` 后能正确显示运行状态；不触发启停 |
 | Proxies | Provider 顺序稳定；展开、选择、刷新、测速、排序行为正常 |
 | UI | Tab、状态栏、日志浮层、鼠标滚轮和键盘移动不互相干扰 |
 
@@ -61,11 +61,7 @@ cargo run -- -d /home/anpoliros/clash
 优先确认改动是否破坏了代理环境隔离：
 
 - `MihomoClient` 必须保留 `no_proxy()`。
-- `MihomoProcess::start` 必须移除大小写 `http_proxy`、`https_proxy`、`all_proxy`、`no_proxy`。
-
-### TUN 开启失败
-
-TUN 需要权限。当前流程会在交互式终端中执行 `sudo -v`，随后用 `sudo -n` 启动 mihomo。修改这里时要保证 raw mode 和 alternate screen 能恢复。
+- 如果要恢复启停控制，先读 `docs/decisions/001-no-tui-process-control.md`，不要直接复用当前 UI 主流程。
 
 ### Provider 列表为空
 

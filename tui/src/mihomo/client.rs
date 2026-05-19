@@ -52,16 +52,6 @@ impl MihomoClient {
             .context("解析 /configs 失败")
     }
 
-    pub async fn reload_config(&self, runtime_path: &str) -> Result<()> {
-        let resp = self
-            .auth(self.http.put(self.url("/configs")))
-            .json(&json!({ "path": runtime_path }))
-            .send()
-            .await?;
-        Self::ensure_success(resp).await?;
-        Ok(())
-    }
-
     // #----代理接口----
     pub async fn proxies(&self) -> Result<ProxiesResponse> {
         let resp = self

@@ -8,12 +8,13 @@
 - mihomo 工作目录由用户传入，通常包含 mihomo 二进制、`config.yaml`、地理数据和 `providers/` 缓存。
 - TUI 不写回用户原始 `config.yaml`，而是把用户配置复制并补齐为 `~/.config/clash-tui/runtime.yaml`。
 - mihomo 运行态通过 `external-controller` 控制，默认补齐为 `127.0.0.1:9090`。
-- HTTP client 和 mihomo 子进程都会隔离常见 proxy 环境变量，避免访问本机 controller 被代理转发。
+- HTTP client 会隔离常见 proxy 环境变量，避免访问本机 controller 被代理转发。
+- TUI 不控制 mihomo 启停；原因见 `docs/decisions/001-no-tui-process-control.md`。
 
 ## 启动数据流
 
 1. `main.rs` 解析 `-d/--dir` 并 canonicalize 工作目录。
-2. `runtime::bootstrap::bootstrap` 查找 YAML 配置和 mihomo 可执行文件。
+2. `runtime::bootstrap::bootstrap` 查找 YAML 配置并加载 TUI 偏好。
 3. `config::runtime_config::prepare` 读取用户配置，生成 `~/.config/clash-tui/runtime.yaml`。
 4. `BootContext` 组合 `RuntimeConfig`、`MihomoClient` 和 `MihomoProcess`。
 5. `app::run` 创建事件通道、日志通道、输入线程和日志 WebSocket 任务。
@@ -26,7 +27,7 @@
 | State | 作用 |
 | --- | --- |
 | `UiState` | 当前页面、光标、滚动位置、日志窗口和状态栏文本 |
-| `RuntimeState` | Proxy/TUN 开关、代理端口、管理端口、PID、当前节点 |
+| `RuntimeState` | Proxy/TUN 状态、代理端口、管理端口、PID、当前节点 |
 | `MihomoState` | mihomo 版本、根选择组、真实节点组、Provider 视图 |
 
 周期性 `Tick` 会刷新进程状态；当 mihomo 正在运行且 tick 满足间隔时，同步 `/version`、`/configs`、`/proxies` 和 `/providers/proxies`。
@@ -39,7 +40,6 @@
 | --- | --- |
 | `GET /version` | 检查 controller 可用性并显示版本 |
 | `GET /configs` | 同步代理端口和 TUN 状态 |
-| `PUT /configs` | reload `runtime.yaml` |
 | `GET /proxies` | 获取 Selector、当前节点和 fallback Provider 数据 |
 | `PUT /proxies/{group}` | 切换 Selector 选择 |
 | `GET /proxies/{node}/delay` | 单节点测速 |
@@ -51,11 +51,11 @@
 ## 关键设计约束
 
 - Runtime First：优先操作 mihomo API，不把 TUI 做成 YAML 编辑器。
-- 配置保护：只写 `runtime.yaml` 和 `mihomo.pid`，不写回用户原始配置。
+- 配置保护：只写 `runtime.yaml` 和 TUI 偏好配置，不写回用户原始配置。
 - 最小模型：`mihomo/models.rs` 只反序列化当前 MVP 需要的字段，未知字段交给 serde 忽略。
 - Provider 顺序：优先从原始 YAML 文本读取 `proxy-providers` 顺序，避免 serde mapping 顺序不稳定影响 UI。
 - 节点切换：先把真实节点组切到具体节点，再把根选择组切到真实节点组，使用户选择后流量固定到该节点；需要恢复自动选择时再把根选择组切回自动组。
-- sudo 边界：只有开启 TUN 或在 TUN 开启状态启动 mihomo 时需要 `sudo -v`。
+- 启停边界：TUI 不处理 start/stop/reload/sudo，避免把服务生命周期混入节点选择体验。
 
 ## 相关文档
 

@@ -20,6 +20,7 @@ docs/
   SPEC.md                      # 文档规范：模板、更新规则和质量要求
   init.md                      # 从零启动 docs/ 体系的通用说明
   architecture/overview.md     # TUI 架构、数据流和外部边界
+  decisions/                   # 重要设计决策和取舍记录
   modules/core.md              # app/runtime/config/mihomo/events/ui 核心模块说明
   workflows/development.md     # 开发、运行、验证和排障流程
   archive/                     # mihomo API 样例、历史资料和原始参考
@@ -32,7 +33,7 @@ docs/modules/mihomo-api.md
 docs/modules/runtime-config.md
 docs/modules/ui-interaction.md
 docs/workflows/release.md
-docs/decisions/0001-runtime-first.md
+docs/decisions/001-no-tui-process-control.md
 ```
 
 ## 阅读顺序

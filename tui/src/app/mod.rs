@@ -9,16 +9,23 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
-use tokio::{process::Command, sync::mpsc, time::Duration};
+use tokio::sync::mpsc;
+use unicode_width::UnicodeWidthStr;
 
 use crate::{
-    config::runtime_config,
+    config::app_config,
     events::{self, AppEvent},
     mihomo::models::{DelayHistory, ProviderItem, ProxyItem},
     runtime::bootstrap::BootContext,
 };
 
 const DIRECT_GROUP: &str = "GLOBAL";
+const MIN_NODE_COLUMNS: usize = 1;
+const MAX_NODE_COLUMNS: usize = 3;
+const NODE_INDENT_WIDTH: u16 = 8;
+const PROXY_LIST_CONTENT_TOP: u16 = 6;
+const GENERAL_MAX_CURSOR: usize = 12;
+const GENERAL_CONTENT_TOP: u16 = 3;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Page {
@@ -34,9 +41,43 @@ pub struct UiState {
     pub node_col: usize,
     pub scroll: usize,
     pub log_scroll: usize,
+    pub terminal_width: u16,
+    pub terminal_height: u16,
+    pub node_columns: usize,
+    pub config_edit: Option<ConfigField>,
+    pub input_buffer: String,
     pub ticks: u64,
     pub logs_open: bool,
     pub status: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConfigField {
+    NodeNameWidth,
+    NodeItemMinWidth,
+    NodeMinGapWidth,
+    NodeReserveWidth,
+    NodeColumnGapWidth,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct NodeLayout {
+    pub name_width: u16,
+    pub item_width: u16,
+    pub min_gap_width: u16,
+    pub reserve_width: u16,
+}
+
+impl ConfigField {
+    fn label(self) -> &'static str {
+        match self {
+            ConfigField::NodeNameWidth => "节点名宽度",
+            ConfigField::NodeItemMinWidth => "节点项最小宽度",
+            ConfigField::NodeMinGapWidth => "最小间隔",
+            ConfigField::NodeReserveWidth => "尾部保留宽度",
+            ConfigField::NodeColumnGapWidth => "列间宽度",
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -86,7 +127,6 @@ pub struct App {
     pub mihomo: MihomoState,
     pub rows: Vec<RowRef>,
     pub logs: Vec<String>,
-    log_tx: mpsc::UnboundedSender<String>,
     event_tx: mpsc::UnboundedSender<AppEvent>,
 }
 
@@ -103,13 +143,15 @@ pub async fn run(boot: BootContext) -> Result<()> {
         let _ = log_client.stream_logs(log_event_tx).await;
     });
 
-    let mut app = App::new(boot, log_tx, event_tx);
+    let mut app = App::new(boot, event_tx);
     app.refresh().await;
 
     let _guard = TerminalGuard::enter()?;
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
 
     loop {
+        let size = terminal.size()?;
+        app.set_viewport(size.width, size.height);
         terminal.draw(|frame| crate::ui::draw(frame, &app))?;
         if let Some(event) = event_rx.recv().await {
             if app.handle(event).await? {
@@ -122,11 +164,7 @@ pub async fn run(boot: BootContext) -> Result<()> {
 }
 
 impl App {
-    pub fn new(
-        boot: BootContext,
-        log_tx: mpsc::UnboundedSender<String>,
-        event_tx: mpsc::UnboundedSender<AppEvent>,
-    ) -> Self {
+    pub fn new(boot: BootContext, event_tx: mpsc::UnboundedSender<AppEvent>) -> Self {
         let manage_port = boot
             .config
             .controller
@@ -150,6 +188,11 @@ impl App {
                 node_col: 0,
                 scroll: 0,
                 log_scroll: 0,
+                terminal_width: 80,
+                terminal_height: 24,
+                node_columns: 2,
+                config_edit: None,
+                input_buffer: String::new(),
                 ticks: 0,
                 logs_open: false,
                 status: "Ready".into(),
@@ -158,7 +201,6 @@ impl App {
             rows: Vec::new(),
             logs: Vec::new(),
             boot,
-            log_tx,
             event_tx,
         }
     }
@@ -192,6 +234,9 @@ impl App {
     async fn handle_key(&mut self, key: crossterm::event::KeyEvent) -> Result<bool> {
         if key.modifiers.contains(KeyModifiers::CONTROL) && matches!(key.code, KeyCode::Char('c')) {
             return Ok(true);
+        }
+        if self.ui.config_edit.is_some() {
+            return self.handle_config_input(key);
         }
         if self.ui.logs_open {
             if matches!(key.code, KeyCode::Esc | KeyCode::Char('q')) {
@@ -236,21 +281,29 @@ impl App {
     async fn handle_mouse(&mut self, mouse: crossterm::event::MouseEvent) -> Result<()> {
         match mouse.kind {
             MouseEventKind::Down(_) => {
-                if mouse.row == 1 {
-                    self.ui.page = match mouse.column {
-                        0..=12 => Page::Proxies,
-                        13..=25 => Page::General,
-                        _ => Page::Rules,
-                    };
-                } else if self.ui.page == Page::Proxies && mouse.row > 4 {
+                if mouse.row == 0 {
+                    if let Some(page) = tab_page_from_column(mouse.column) {
+                        self.ui.page = page;
+                        self.ui.cursor = 0;
+                        self.ui.scroll = 0;
+                        self.ui.node_col = 0;
+                    }
+                } else if self.ui.page == Page::Proxies && mouse.row >= PROXY_LIST_CONTENT_TOP {
                     self.ui.cursor = self
                         .ui
                         .scroll
-                        .saturating_add((mouse.row as usize).saturating_sub(5))
+                        .saturating_add(
+                            (mouse.row as usize).saturating_sub(PROXY_LIST_CONTENT_TOP as usize),
+                        )
                         .min(self.rows.len().saturating_sub(1));
                     self.ui.node_col = self.node_col_from_mouse(mouse.column);
-                    let result = self.handle_proxy_click(mouse.column).await;
-                    self.handle_action_result(result);
+                    self.fix_node_col();
+                    self.keep_cursor_visible();
+                } else if self.ui.page == Page::General && mouse.row >= 4 {
+                    let display_row = mouse.row.saturating_sub(GENERAL_CONTENT_TOP) as usize;
+                    if let Some(cursor) = general_cursor_from_display_row(display_row) {
+                        self.ui.cursor = cursor;
+                    }
                 }
             }
             MouseEventKind::ScrollDown if self.ui.logs_open => self.scroll_logs(-3),
@@ -266,9 +319,12 @@ impl App {
     async fn activate(&mut self) -> Result<()> {
         match self.ui.page {
             Page::General => match self.ui.cursor {
-                0 => self.toggle_proxy().await?,
-                1 => self.toggle_tun().await?,
-                5 => self.ui.logs_open = true,
+                6 => self.start_config_input(ConfigField::NodeNameWidth),
+                7 => self.start_config_input(ConfigField::NodeItemMinWidth),
+                8 => self.start_config_input(ConfigField::NodeMinGapWidth),
+                9 => self.start_config_input(ConfigField::NodeReserveWidth),
+                10 => self.start_config_input(ConfigField::NodeColumnGapWidth),
+                11 => self.ui.logs_open = true,
                 _ => {}
             },
             Page::Proxies => {
@@ -313,49 +369,6 @@ impl App {
         self.runtime.active_node = auto_group;
         self.ui.status = "已切回自动选择".into();
         self.refresh().await;
-        Ok(())
-    }
-
-    async fn toggle_proxy(&mut self) -> Result<()> {
-        if self.runtime.proxy_enabled {
-            self.boot.process.stop().await?;
-            self.ui.status = "mihomo stopped".into();
-        } else {
-            let sudo = self.runtime.tun_enabled;
-            if sudo {
-                self.sudo_validate().await?;
-            }
-            self.boot.process.start(self.log_tx.clone(), sudo).await?;
-            self.ui.status = "mihomo starting".into();
-            self.wait_for_api().await;
-        }
-        self.runtime.proxy_enabled = self.boot.process.is_running();
-        self.runtime.pid = self.boot.process.pid();
-        Ok(())
-    }
-
-    async fn toggle_tun(&mut self) -> Result<()> {
-        let enabled = !self.runtime.tun_enabled;
-        if enabled {
-            self.sudo_validate().await?;
-        }
-        runtime_config::set_tun_enabled(&self.boot.config.path, enabled)?;
-        if let Err(err) = self
-            .boot
-            .client
-            .reload_config(self.boot.config.path.to_string_lossy().as_ref())
-            .await
-        {
-            self.ui.status = format!("TUN 配置已写入，reload 失败：{err}");
-            return Ok(());
-        }
-        self.runtime.tun_enabled = enabled;
-        self.ui.status = if enabled {
-            "TUN enabled"
-        } else {
-            "TUN disabled"
-        }
-        .into();
         Ok(())
     }
 
@@ -526,14 +539,16 @@ impl App {
         for (provider_idx, provider) in self.mihomo.providers.iter().enumerate() {
             self.rows.push(RowRef::Provider(provider_idx));
             if provider.expanded {
-                for node_idx in (0..provider.nodes.len()).step_by(2) {
+                for node_idx in (0..provider.nodes.len()).step_by(self.ui.node_columns) {
                     self.rows.push(RowRef::NodeRow(provider_idx, node_idx));
                 }
             }
         }
-        self.ui.cursor = self.ui.cursor.min(self.rows.len().saturating_sub(1));
-        self.fix_node_col();
-        self.keep_cursor_visible();
+        if self.ui.page == Page::Proxies {
+            self.ui.cursor = self.ui.cursor.min(self.rows.len().saturating_sub(1));
+            self.fix_node_col();
+            self.keep_cursor_visible();
+        }
     }
 
     // #----UI 工具----
@@ -561,7 +576,7 @@ impl App {
 
     fn move_cursor(&mut self, delta: isize) {
         let max = match self.ui.page {
-            Page::General => 5,
+            Page::General => GENERAL_MAX_CURSOR,
             Page::Proxies => self.rows.len().saturating_sub(1),
             Page::Rules => 0,
         };
@@ -601,20 +616,9 @@ impl App {
         }
     }
 
-    async fn handle_proxy_click(&mut self, column: u16) -> Result<()> {
-        match self.rows.get(self.ui.cursor).cloned() {
-            Some(RowRef::AutoSelect) => self.activate().await?,
-            Some(RowRef::Provider(_)) if column >= 56 => self.sort_selected_provider(),
-            Some(RowRef::Provider(_)) if column >= 47 => self.ping_selected_provider().await?,
-            Some(RowRef::Provider(_)) if column >= 36 => self.refresh_selected_provider().await?,
-            _ => self.activate().await?,
-        }
-        Ok(())
-    }
-
     fn selected_node_index(&self, provider_idx: usize, row_start: usize) -> Option<usize> {
         let provider = self.mihomo.providers.get(provider_idx)?;
-        let idx = row_start + self.ui.node_col.min(1);
+        let idx = row_start + self.ui.node_col.min(self.ui.node_columns.saturating_sub(1));
         if idx < provider.nodes.len() {
             Some(idx)
         } else {
@@ -626,11 +630,20 @@ impl App {
         if !matches!(self.rows.get(self.ui.cursor), Some(RowRef::NodeRow(_, _))) {
             return;
         }
-        self.ui.node_col = if delta.is_negative() { 0 } else { 1 };
+        self.ui.node_col = if delta.is_negative() {
+            self.ui.node_col.saturating_sub(1)
+        } else {
+            self.ui.node_col.saturating_add(1)
+        };
         self.fix_node_col();
     }
 
     fn handle_horizontal(&mut self, delta: isize) {
+        if self.ui.page == Page::General {
+            self.adjust_node_item_width(delta);
+            return;
+        }
+
         match self.rows.get(self.ui.cursor).cloned() {
             Some(RowRef::Provider(idx)) => {
                 if let Some(provider) = self.mihomo.providers.get_mut(idx) {
@@ -651,6 +664,8 @@ impl App {
                 .get(*provider_idx)
                 .map(|provider| provider.nodes.len())
                 .unwrap_or_default();
+            let max_col = self.ui.node_columns.saturating_sub(1);
+            self.ui.node_col = self.ui.node_col.min(max_col);
             if row_start + self.ui.node_col >= len {
                 self.ui.node_col = 0;
             }
@@ -669,15 +684,231 @@ impl App {
     }
 
     fn ui_visible_rows(&self) -> usize {
-        12
+        self.ui.terminal_height.saturating_sub(9).max(1) as usize
     }
 
     fn node_col_from_mouse(&self, column: u16) -> usize {
-        if column > 42 {
-            1
+        let node_start = NODE_INDENT_WIDTH.saturating_add(1);
+        let rel = column.saturating_sub(node_start);
+        let step = self
+            .node_layout()
+            .item_width
+            .saturating_add(self.boot.app_config.node_column_gap_width);
+        (rel / step).min(self.ui.node_columns.saturating_sub(1) as u16) as usize
+    }
+
+    fn set_viewport(&mut self, width: u16, height: u16) {
+        let old_columns = self.ui.node_columns;
+        self.ui.terminal_width = width;
+        self.ui.terminal_height = height;
+        self.ui.node_columns = self.calculate_node_columns(width);
+        if self.ui.node_columns != old_columns {
+            self.rebuild_rows();
         } else {
-            0
+            self.fix_node_col();
+            self.keep_cursor_visible();
         }
+    }
+
+    fn calculate_node_columns(&self, width: u16) -> usize {
+        let content_width = width.saturating_sub(2).saturating_sub(NODE_INDENT_WIDTH);
+        let step = self
+            .min_node_item_width()
+            .saturating_add(self.boot.app_config.node_column_gap_width);
+        let columns = content_width
+            .saturating_add(self.boot.app_config.node_column_gap_width)
+            .checked_div(step.max(1))
+            .unwrap_or(1) as usize;
+        columns.clamp(MIN_NODE_COLUMNS, MAX_NODE_COLUMNS)
+    }
+
+    fn adjust_node_item_width(&mut self, delta: isize) {
+        let Some(field) = self.config_field_at_cursor() else {
+            return;
+        };
+        let step = if delta.is_negative() { -1 } else { 1 };
+        self.adjust_config_field(field, step);
+    }
+
+    fn config_field_at_cursor(&self) -> Option<ConfigField> {
+        match self.ui.cursor {
+            6 => Some(ConfigField::NodeNameWidth),
+            7 => Some(ConfigField::NodeItemMinWidth),
+            8 => Some(ConfigField::NodeMinGapWidth),
+            9 => Some(ConfigField::NodeReserveWidth),
+            10 => Some(ConfigField::NodeColumnGapWidth),
+            _ => None,
+        }
+    }
+
+    fn adjust_config_field(&mut self, field: ConfigField, delta: i16) {
+        match field {
+            ConfigField::NodeNameWidth => self.boot.app_config.adjust_node_name_width(delta),
+            ConfigField::NodeItemMinWidth => self.boot.app_config.adjust_node_item_min_width(delta),
+            ConfigField::NodeMinGapWidth => self.boot.app_config.adjust_node_min_gap_width(delta),
+            ConfigField::NodeReserveWidth => self.boot.app_config.adjust_node_reserve_width(delta),
+            ConfigField::NodeColumnGapWidth => {
+                self.boot.app_config.adjust_node_column_gap_width(delta)
+            }
+        }
+        self.save_app_config(field.label());
+    }
+
+    fn start_config_input(&mut self, field: ConfigField) {
+        self.ui.config_edit = Some(field);
+        self.ui.input_buffer = self.config_field_value(field).to_string();
+        self.ui.status = format!("输入 {} 后按 Enter 保存，Esc 取消", field.label());
+    }
+
+    fn handle_config_input(&mut self, key: crossterm::event::KeyEvent) -> Result<bool> {
+        match key.code {
+            KeyCode::Esc => {
+                self.ui.config_edit = None;
+                self.ui.input_buffer.clear();
+                self.ui.status = "已取消输入".into();
+            }
+            KeyCode::Enter => self.commit_config_input(),
+            KeyCode::Backspace => {
+                self.ui.input_buffer.pop();
+            }
+            KeyCode::Char(ch) if ch.is_ascii_digit() => {
+                if self.ui.input_buffer.len() < 4 {
+                    self.ui.input_buffer.push(ch);
+                }
+            }
+            _ => {}
+        }
+        Ok(false)
+    }
+
+    fn commit_config_input(&mut self) {
+        let Some(field) = self.ui.config_edit else {
+            return;
+        };
+        let Ok(value) = self.ui.input_buffer.parse::<u16>() else {
+            self.ui.status = "请输入数字".into();
+            return;
+        };
+        match field {
+            ConfigField::NodeNameWidth => self.boot.app_config.set_node_name_width(value),
+            ConfigField::NodeItemMinWidth => self.boot.app_config.set_node_item_min_width(value),
+            ConfigField::NodeMinGapWidth => self.boot.app_config.set_node_min_gap_width(value),
+            ConfigField::NodeReserveWidth => self.boot.app_config.set_node_reserve_width(value),
+            ConfigField::NodeColumnGapWidth => {
+                self.boot.app_config.set_node_column_gap_width(value)
+            }
+        }
+        self.ui.config_edit = None;
+        self.ui.input_buffer.clear();
+        self.save_app_config(field.label());
+    }
+
+    fn config_field_value(&self, field: ConfigField) -> u16 {
+        match field {
+            ConfigField::NodeNameWidth => self.boot.app_config.node_name_width,
+            ConfigField::NodeItemMinWidth => self.boot.app_config.node_item_min_width,
+            ConfigField::NodeMinGapWidth => self.boot.app_config.node_min_gap_width,
+            ConfigField::NodeReserveWidth => self.boot.app_config.node_reserve_width,
+            ConfigField::NodeColumnGapWidth => self.boot.app_config.node_column_gap_width,
+        }
+    }
+
+    fn save_app_config(&mut self, label: &str) {
+        if let Err(err) = app_config::save(&self.boot.app_config) {
+            self.ui.status = format!("保存 TUI 偏好失败：{err}");
+            return;
+        }
+        self.ui.node_columns = self.calculate_node_columns(self.ui.terminal_width);
+        self.rebuild_rows();
+        self.ui.status = format!("{label}：{}", self.config_field_value_by_label(label));
+    }
+
+    fn config_field_value_by_label(&self, label: &str) -> u16 {
+        match label {
+            "节点名宽度" => self.boot.app_config.node_name_width,
+            "节点项最小宽度" => self.boot.app_config.node_item_min_width,
+            "最小间隔" => self.boot.app_config.node_min_gap_width,
+            "尾部保留宽度" => self.boot.app_config.node_reserve_width,
+            "列间宽度" => self.boot.app_config.node_column_gap_width,
+            _ => 0,
+        }
+    }
+
+    pub fn node_layout(&self) -> NodeLayout {
+        let max_delay_width = self.max_delay_width();
+        let full_name_width = self.max_full_node_name_width();
+        let content_width = self
+            .ui
+            .terminal_width
+            .saturating_sub(2)
+            .saturating_sub(NODE_INDENT_WIDTH);
+        let available_item_width = content_width
+            .saturating_sub(
+                self.boot
+                    .app_config
+                    .node_column_gap_width
+                    .saturating_mul(self.ui.node_columns.saturating_sub(1) as u16),
+            )
+            .checked_div(self.ui.node_columns.max(1) as u16)
+            .unwrap_or(self.min_node_item_width());
+        let min_required = self.min_node_item_width();
+        let full_required = full_name_width
+            .saturating_add(self.boot.app_config.node_min_gap_width)
+            .saturating_add(max_delay_width);
+        let item_width = if self.ui.node_columns == MAX_NODE_COLUMNS {
+            available_item_width.clamp(min_required, full_required.max(min_required))
+        } else {
+            min_required
+        };
+        let name_width = item_width
+            .saturating_sub(max_delay_width)
+            .saturating_sub(self.boot.app_config.node_min_gap_width)
+            .clamp(
+                self.boot.app_config.node_name_width,
+                full_name_width.max(self.boot.app_config.node_name_width),
+            );
+
+        NodeLayout {
+            name_width,
+            item_width: item_width.max(
+                name_width
+                    .saturating_add(self.boot.app_config.node_min_gap_width)
+                    .saturating_add(max_delay_width),
+            ),
+            min_gap_width: self.boot.app_config.node_min_gap_width,
+            reserve_width: self.boot.app_config.node_reserve_width,
+        }
+    }
+
+    fn min_node_item_width(&self) -> u16 {
+        self.boot.app_config.node_item_min_width.max(
+            self.boot
+                .app_config
+                .node_name_width
+                .saturating_add(self.boot.app_config.node_min_gap_width)
+                .saturating_add(self.max_delay_width()),
+        )
+    }
+
+    fn max_delay_width(&self) -> u16 {
+        self.mihomo
+            .providers
+            .iter()
+            .flat_map(|provider| provider.nodes.iter())
+            .map(|node| delay_text(node.delay))
+            .map(|text| UnicodeWidthStr::width(text.as_str()) as u16)
+            .max()
+            .unwrap_or(UnicodeWidthStr::width("--ms") as u16)
+    }
+
+    fn max_full_node_name_width(&self) -> u16 {
+        self.mihomo
+            .providers
+            .iter()
+            .flat_map(|provider| provider.nodes.iter())
+            .map(|node| bracketed_node_width(&clean_node_name_for_layout(&node.name)))
+            .max()
+            .unwrap_or(self.boot.app_config.node_name_width)
     }
 
     fn handle_action_result(&mut self, result: Result<()>) {
@@ -697,29 +928,6 @@ impl App {
 
     fn max_log_scroll(&self) -> usize {
         self.logs.len().saturating_sub(1)
-    }
-
-    async fn wait_for_api(&mut self) {
-        for _ in 0..20 {
-            if self.boot.client.version().await.is_ok() {
-                self.refresh().await;
-                return;
-            }
-            tokio::time::sleep(Duration::from_millis(250)).await;
-        }
-        self.ui.status = "mihomo 已启动，等待 external-controller 就绪".into();
-    }
-
-    async fn sudo_validate(&mut self) -> Result<()> {
-        self.ui.status = "需要 sudo 权限，正在切换到终端提示".into();
-        TerminalGuard::leave();
-        let status = Command::new("sudo").arg("-v").status().await;
-        TerminalGuard::restore()?;
-        match status {
-            Ok(status) if status.success() => Ok(()),
-            Ok(status) => Err(anyhow::anyhow!("sudo 验证失败：{status}")),
-            Err(err) => Err(err).context("无法执行 sudo -v"),
-        }
     }
 
     fn apply_delay(&mut self, provider: &str, node: &str, delay: Option<u64>) {
@@ -894,6 +1102,65 @@ fn has_real_nodes(
         .iter()
         .filter_map(|name| proxies.get(name))
         .any(|proxy| proxy.all.is_empty() && !is_builtin_proxy(&proxy.name))
+}
+
+// #----显示宽度----
+fn general_cursor_from_display_row(row: usize) -> Option<usize> {
+    match row {
+        1 => Some(0),
+        2 => Some(1),
+        3 => Some(2),
+        4 => Some(3),
+        5 => Some(4),
+        6 => Some(5),
+        9 => Some(6),
+        10 => Some(7),
+        11 => Some(8),
+        12 => Some(9),
+        13 => Some(10),
+        16 => Some(11),
+        17 => Some(12),
+        _ => None,
+    }
+}
+
+fn tab_page_from_column(column: u16) -> Option<Page> {
+    match column {
+        1..=7 => Some(Page::Proxies),
+        10..=16 => Some(Page::General),
+        19..=23 => Some(Page::Rules),
+        _ => None,
+    }
+}
+
+fn delay_text(delay: Option<u64>) -> String {
+    delay.map_or("--ms".into(), |value| format!("{value}ms"))
+}
+
+fn bracketed_node_width(name: &str) -> u16 {
+    UnicodeWidthStr::width(name) as u16 + 2
+}
+
+fn clean_node_name_for_layout(name: &str) -> String {
+    let mut text = String::new();
+    for ch in name.chars() {
+        if !is_emoji_char_for_layout(ch) {
+            text.push(ch);
+        }
+    }
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn is_emoji_char_for_layout(ch: char) -> bool {
+    let value = ch as u32;
+    matches!(
+        value,
+        0x1F000..=0x1FAFF
+            | 0x2600..=0x27BF
+            | 0xFE00..=0xFE0F
+            | 0x200D
+            | 0x20E3
+    )
 }
 
 // #----终端守卫----

@@ -7,9 +7,9 @@
 | Module | 职责 | 边界 |
 | --- | --- | --- |
 | `main.rs` | CLI 参数解析、启动上下文初始化、进入 TUI | 只支持 `-d/--dir`，不承载业务逻辑 |
-| `runtime/` | 启动编排、配置和二进制发现、创建 `BootContext` | 不直接渲染 UI，不直接处理用户输入 |
-| `config/` | 生成 `runtime.yaml`、补齐 controller、切换 TUN、读取 Provider 顺序 | 不写回用户原始 `config.yaml` |
-| `mihomo/` | external-controller API、进程启停、PID 状态、API 数据模型 | 不持有 UI 状态 |
+| `runtime/` | 启动编排、配置发现、创建 `BootContext` | 不直接渲染 UI，不直接处理用户输入 |
+| `config/` | 生成 `runtime.yaml`、补齐 controller、读取 Provider 顺序和 TUI 偏好 | 不写回用户原始 `config.yaml` |
+| `mihomo/` | external-controller API、PID 状态、API 数据模型 | 不持有 UI 状态，不控制 mihomo 启停 |
 | `events/` | 键鼠输入、Tick、日志桥接、后台任务结果统一为 `AppEvent` | 不决定业务动作 |
 | `app/` | 应用状态、事件循环、业务动作、数据转换 | 不直接绘制 widget |
 | `ui/` | ratatui 页面渲染、主题和日志浮层 | 不访问 mihomo API |
@@ -21,7 +21,6 @@
 `bootstrap(work_dir)` 是启动准备入口。它会：
 
 - 在工作目录中优先查找 `config.yaml`、`config.yml`，否则选择排序后的第一个 YAML。
-- 查找文件名为 `mihomo` 或以 `mihomo-` 开头的可执行文件。
 - 调用 `runtime_config::prepare` 生成 runtime 配置。
 - 创建 `MihomoClient` 和 `MihomoProcess`。
 
@@ -33,7 +32,7 @@
 ~/.config/clash-tui/runtime.yaml
 ```
 
-`prepare` 会复制用户 YAML，必要时补齐 `external-controller`。`set_tun_enabled` 只修改 runtime 配置中的 `tun.enable`，并补齐 `stack`、`auto-route` 和 `auto-detect-interface` 默认值。
+`prepare` 会复制用户 YAML，必要时补齐 `external-controller`。TUI 偏好配置保存在工作目录下的 `tui/config/ui.yaml`。
 
 ### `mihomo/`
 
@@ -42,10 +41,8 @@
 `MihomoProcess` 负责：
 
 - 通过工作目录中的 `mihomo.pid` 判断运行状态。
-- 启动 mihomo：`mihomo -d <work_dir> -f <runtime.yaml>`。
-- TUN 场景使用 `sudo -n <mihomo-binary>`。
-- 捕获 stdout/stderr 送入日志通道。
-- 启动子进程时移除大小写 proxy 环境变量。
+
+TUI 不再负责启动、停止或 reload mihomo。原因和后续恢复入口见 `docs/decisions/001-no-tui-process-control.md`。
 
 ### `app/`
 
@@ -85,7 +82,7 @@
 - 改 mihomo 工作目录发现：看 `runtime/bootstrap.rs`，确认错误信息和排序规则。
 - 改 runtime 配置：看 `config/runtime_config.rs`，必须保持“不写回用户配置”的边界。
 - 改 external-controller API：看 `mihomo/client.rs` 和 `mihomo/models.rs`，同步更新 API 文档或 `docs/MAP.md` 的建议文档。
-- 改启停和 sudo：看 `mihomo/process.rs`、`app::toggle_proxy`、`app::toggle_tun`，注意终端 raw mode 的恢复。
+- 恢复启停和 sudo：先读 `docs/decisions/001-no-tui-process-control.md`，再设计独立的 process-control 模块，不要直接塞回当前交互主线。
 - 改快捷键或鼠标行为：看 `app::handle_key`、`app::handle_mouse` 和 `ui/mod.rs` 状态栏提示。
 - 改 Provider/节点视图：看 `load_providers`、`build_from_real_providers`、`build_from_proxy_groups`、`rebuild_rows` 和 `draw_proxies`。
 
@@ -100,8 +97,6 @@ cargo run -- -d /home/anpoliros/clash
 
 需要人工确认的场景：
 
-- General 页 Proxy 开关能启动和停止 mihomo。
-- TUN 开启时会先出现 sudo 验证，并能 reload 配置。
 - Proxies 页 Provider 能展开、刷新、测速、排序。
 - 选择节点后 General 页当前节点和 Proxies 页高亮会同步；选择 `Auto Select` 后可以回到自动选择组。
 - 日志浮层可以打开、滚动和关闭。

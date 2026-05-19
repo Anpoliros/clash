@@ -1,4 +1,4 @@
-//! runtime.yaml 管理：复制用户基础配置，补齐 external-controller，并按需切换 TUN。
+//! runtime.yaml 管理：复制用户基础配置，并补齐 external-controller。
 
 use std::{
     env, fs,
@@ -10,7 +10,6 @@ use serde_yaml::{Mapping, Value};
 
 #[derive(Clone)]
 pub struct RuntimeConfig {
-    pub path: PathBuf,
     pub controller: String,
     pub secret: Option<String>,
     pub provider_names: Vec<String>,
@@ -39,31 +38,10 @@ pub fn prepare(source: &Path) -> Result<RuntimeConfig> {
     fs::write(&path, serde_yaml::to_string(&doc)?).context("写入 runtime.yaml 失败")?;
 
     Ok(RuntimeConfig {
-        path,
         controller: normalize_controller(&controller),
         secret,
         provider_names,
     })
-}
-
-// #----TUN 修改----
-pub fn set_tun_enabled(path: &Path, enabled: bool) -> Result<()> {
-    let raw = fs::read_to_string(path).context("读取 runtime.yaml 失败")?;
-    let mut doc: Value = serde_yaml::from_str(&raw).context("解析 runtime.yaml 失败")?;
-    let root = ensure_mapping(&mut doc);
-
-    let tun_key = Value::from("tun");
-    if !root.contains_key(&tun_key) {
-        root.insert(tun_key.clone(), Value::Mapping(Mapping::new()));
-    }
-    let tun = root.get_mut(&tun_key).expect("tun key exists");
-    let tun_map = ensure_mapping(tun);
-    tun_map.insert(Value::from("enable"), Value::Bool(enabled));
-    insert_default(tun_map, "stack", Value::from("system"));
-    insert_default(tun_map, "auto-route", Value::Bool(true));
-    insert_default(tun_map, "auto-detect-interface", Value::Bool(true));
-
-    fs::write(path, serde_yaml::to_string(&doc)?).context("写入 runtime.yaml 失败")
 }
 
 // #----工具函数----
@@ -130,13 +108,6 @@ fn provider_names_from_text(raw: &str) -> Option<Vec<String>> {
         None
     } else {
         Some(names)
-    }
-}
-
-fn insert_default(map: &mut Mapping, key: &str, value: Value) {
-    let key = Value::from(key);
-    if !map.contains_key(&key) {
-        map.insert(key, value);
     }
 }
 
