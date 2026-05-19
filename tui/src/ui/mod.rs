@@ -172,6 +172,12 @@ fn draw_general(frame: &mut Frame<'_>, area: Rect, app: &App, theme: &Theme) {
             theme,
         ),
     ];
+    let visible_rows = area.height.saturating_sub(2).max(1) as usize;
+    let rows = rows
+        .into_iter()
+        .skip(app.ui.scroll)
+        .take(visible_rows)
+        .collect::<Vec<_>>();
     let panel = Paragraph::new(rows)
         .block(Block::default().title(" General ").borders(Borders::ALL))
         .style(theme.text);

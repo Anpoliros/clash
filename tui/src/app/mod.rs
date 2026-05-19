@@ -26,6 +26,9 @@ const NODE_INDENT_WIDTH: u16 = 8;
 const PROXY_LIST_CONTENT_TOP: u16 = 6;
 const GENERAL_MAX_CURSOR: usize = 12;
 const GENERAL_CONTENT_TOP: u16 = 3;
+const GENERAL_TOTAL_ROWS: usize = 18;
+const GENERAL_CURSOR_ROWS: [usize; GENERAL_MAX_CURSOR + 1] =
+    [1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 16, 17];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Page {
@@ -299,10 +302,14 @@ impl App {
                     self.ui.node_col = self.node_col_from_mouse(mouse.column);
                     self.fix_node_col();
                     self.keep_cursor_visible();
-                } else if self.ui.page == Page::General && mouse.row >= 4 {
-                    let display_row = mouse.row.saturating_sub(GENERAL_CONTENT_TOP) as usize;
+                } else if self.ui.page == Page::General && mouse.row >= GENERAL_CONTENT_TOP {
+                    let display_row = self
+                        .ui
+                        .scroll
+                        .saturating_add(mouse.row.saturating_sub(GENERAL_CONTENT_TOP) as usize);
                     if let Some(cursor) = general_cursor_from_display_row(display_row) {
                         self.ui.cursor = cursor;
+                        self.keep_cursor_visible();
                     }
                 }
             }
@@ -676,15 +683,36 @@ impl App {
 
     fn keep_cursor_visible(&mut self) {
         let height = self.ui_visible_rows();
-        if self.ui.cursor < self.ui.scroll {
-            self.ui.scroll = self.ui.cursor;
-        } else if self.ui.cursor >= self.ui.scroll.saturating_add(height) {
-            self.ui.scroll = self.ui.cursor.saturating_sub(height.saturating_sub(1));
+        let cursor_row = self.cursor_display_row();
+        if cursor_row < self.ui.scroll {
+            self.ui.scroll = cursor_row;
+        } else if cursor_row >= self.ui.scroll.saturating_add(height) {
+            self.ui.scroll = cursor_row.saturating_sub(height.saturating_sub(1));
+        }
+        self.ui.scroll = self.ui.scroll.min(self.max_scroll());
+    }
+
+    fn cursor_display_row(&self) -> usize {
+        match self.ui.page {
+            Page::General => GENERAL_CURSOR_ROWS[self.ui.cursor.min(GENERAL_MAX_CURSOR)],
+            Page::Proxies | Page::Rules => self.ui.cursor,
         }
     }
 
     fn ui_visible_rows(&self) -> usize {
-        self.ui.terminal_height.saturating_sub(9).max(1) as usize
+        match self.ui.page {
+            Page::General => self.ui.terminal_height.saturating_sub(5).max(1) as usize,
+            Page::Proxies => self.ui.terminal_height.saturating_sub(8).max(1) as usize,
+            Page::Rules => 1,
+        }
+    }
+
+    fn max_scroll(&self) -> usize {
+        match self.ui.page {
+            Page::General => GENERAL_TOTAL_ROWS.saturating_sub(self.ui_visible_rows()),
+            Page::Proxies => self.rows.len().saturating_sub(self.ui_visible_rows()),
+            Page::Rules => 0,
+        }
     }
 
     fn node_col_from_mouse(&self, column: u16) -> usize {
@@ -1106,22 +1134,7 @@ fn has_real_nodes(
 
 // #----显示宽度----
 fn general_cursor_from_display_row(row: usize) -> Option<usize> {
-    match row {
-        1 => Some(0),
-        2 => Some(1),
-        3 => Some(2),
-        4 => Some(3),
-        5 => Some(4),
-        6 => Some(5),
-        9 => Some(6),
-        10 => Some(7),
-        11 => Some(8),
-        12 => Some(9),
-        13 => Some(10),
-        16 => Some(11),
-        17 => Some(12),
-        _ => None,
-    }
+    GENERAL_CURSOR_ROWS.iter().position(|item| *item == row)
 }
 
 fn tab_page_from_column(column: u16) -> Option<Page> {

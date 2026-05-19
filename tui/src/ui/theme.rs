@@ -16,12 +16,12 @@ pub struct Theme {
 impl Default for Theme {
     fn default() -> Self {
         Self {
-            text: Style::default().fg(Color::Gray).bg(Color::Black),
-            muted: Style::default().fg(Color::DarkGray).bg(Color::Black),
-            header: Style::default().fg(Color::Cyan).bg(Color::Black),
+            text: Style::default().fg(Color::Gray),
+            muted: Style::default().fg(Color::DarkGray),
+            header: Style::default().fg(Color::Cyan),
             hover: Style::default().fg(Color::Black).bg(Color::Yellow),
-            active: Style::default().fg(Color::Green).bg(Color::Black),
-            action: Style::default().fg(Color::LightBlue).bg(Color::Black),
+            active: Style::default().fg(Color::Green),
+            action: Style::default().fg(Color::LightBlue),
             status: Style::default().fg(Color::Black).bg(Color::Cyan),
         }
     }
