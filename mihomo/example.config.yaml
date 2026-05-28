@@ -1,0 +1,144 @@
+port: 7890
+socks-port: 7891
+allow-lan: true
+mode: rule
+log-level: info
+
+# ==== ui ====
+external-controller: 127.0.0.1:9090
+external-ui: ./ui
+secret: "890890"
+
+
+# ==== tun ====
+tun:
+  enable: true
+  stack: system
+  auto-route: true
+  auto-detect-interface: true
+  dns-hijack:
+    - any:53
+  exclude-uid:    # 不接管以下用户的流量
+    - 996         # cloudflared用户
+#    - 132         # git用户
+
+
+# ==== dns ====
+dns:
+  enable: true
+  # listen: 0.0.0.0:53
+  enhanced-mode: fake-ip
+  nameserver:
+    # - 1.1.1.1
+    # - 8.8.8.8
+    - 223.5.5.5
+  fallback:
+      - 1.1.1.1
+      - 8.8.8.8
+
+
+sniffer:
+  enable: true
+  sniffing:
+    - tls
+    - http
+
+
+# ==== 延迟检测 ====
+p: &p
+  type: http
+  interval: 3600     # 自动更新订阅时间，单位为秒
+  health-check:
+    enable: true
+    url: https://cp.cloudflare.com
+    interval: 300    # 节点连通性检测时间间隔，s
+    timeout: 1000    # 节点超时判断，ms
+    tolerance: 100   # 节点自动切换差值，ms
+
+
+
+# region use
+# 订阅名注册
+use: &use
+  # type: select     # 手动切换
+  type: url-test     # 自动切换
+  use:
+    - kitty
+    - ikuuu
+    # - ladder
+
+
+# region providers
+proxy-providers:
+
+# ladder:                             # 订阅名
+#   <<: *p
+#   url: "https://..."                # 你的订阅链接
+#   path: ./providers/ladder.yaml     # 缓存配置文件
+#   override:
+#     additional-prefix: "[ladder]"   # 为订阅节点添加前缀
+
+  kitty:
+    <<: *p
+    url: "https://your-link-here"
+    path: ./providers/kitty.yaml
+    # 如需要为该订阅组节点添加前缀，取消下面两行注释
+    override:
+      additional-prefix: "[kitty]"
+
+  ikuuu:
+    <<: *p
+    url: "https://your-link-here"
+    path: ./providers/ikuuu.yaml
+    override:
+      additional-prefix: "[ikuuu]"
+
+# endregion
+
+# proxies:
+#  - name: 日本01
+#    type: vmess
+#    server: jp.example.com
+#    port: 38801
+#    uuid: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+#    alterId: 0
+#    cipher: auto
+#    tls: true
+#    udp: true
+
+# proxy-groups:
+#   # 使用 WARP 的用户需要手动在下方的 proxies 字段内添加 WARP
+#   # 例如 [WARP, 全部节点, 自动选择, 香港, 台湾, 日本, 新加坡, 美国, 其它地区, DIRECT],
+#   - {
+#       name: 节点选择,
+#       type: select,
+#       proxies:
+#         [全部节点],
+#     }
+#   - { name: 全部节点, <<: *use }
+
+
+# region proxy-groups
+proxy-groups:
+  - name: 节点选择
+    type: select
+    proxies:
+      - 自动选择
+      - 全部节点
+
+  - name: 自动选择
+    <<: *use
+
+  - name: 全部节点
+    type: select
+    use:
+      - kitty
+      - ikuuu
+      # - ladder
+
+
+# region rules
+rules:
+  - DOMAIN-SUFFIX,google.com,节点选择
+  - GEOIP,CN,DIRECT
+  - MATCH,节点选择

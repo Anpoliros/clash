@@ -55,6 +55,8 @@ TUI 不再负责启动、停止或 reload mihomo。原因和后续恢复入口�
 
 节点切换由 `select_node` 完成。它优先选择真实节点组，再在根选择组上选择真实节点组，避免用户选中节点后仍被自动选择策略覆盖。需要回到 clash/mihomo 自动选择时，Proxies 页顶部的 `Auto Select` 行会把根选择组切回自动组。
 
+Proxies 页水平键按当前行决定动作：Provider 行用 `h/l` 收起或展开；节点行用 `h/l` 在列间移动，当光标已在最左侧节点列时再次按 `h` 会收起所属 Provider 并把光标放回 Provider 行。
+
 ### `ui/`
 
 `ui::draw` 组合三块区域：

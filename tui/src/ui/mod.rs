@@ -415,7 +415,7 @@ fn draw_rules(frame: &mut Frame<'_>, area: Rect, theme: &Theme) {
 
 fn draw_status(frame: &mut Frame<'_>, area: Rect, app: &App, theme: &Theme) {
     let text = format!(
-        " {} | Tab 切换页面 | j/k 移动 | Enter 操作 | q 退出",
+        " {} | Tab 切换页面 | j/k 移动 | h/l 展开或列移动 | Enter 操作 | q 退出",
         app.ui.status
     );
     frame.render_widget(Paragraph::new(text).style(theme.status), area);

@@ -633,18 +633,6 @@ impl App {
         }
     }
 
-    fn move_node_col(&mut self, delta: isize) {
-        if !matches!(self.rows.get(self.ui.cursor), Some(RowRef::NodeRow(_, _))) {
-            return;
-        }
-        self.ui.node_col = if delta.is_negative() {
-            self.ui.node_col.saturating_sub(1)
-        } else {
-            self.ui.node_col.saturating_add(1)
-        };
-        self.fix_node_col();
-    }
-
     fn handle_horizontal(&mut self, delta: isize) {
         if self.ui.page == Page::General {
             self.adjust_node_item_width(delta);
@@ -658,9 +646,43 @@ impl App {
                     self.rebuild_rows();
                 }
             }
-            Some(RowRef::NodeRow(_, _)) => self.move_node_col(delta),
+            Some(RowRef::NodeRow(provider_idx, _)) => {
+                if delta.is_negative() && self.ui.node_col == 0 {
+                    self.collapse_provider(provider_idx);
+                } else {
+                    self.move_node_col(delta);
+                }
+            }
             _ => {}
         }
+    }
+
+    fn move_node_col(&mut self, delta: isize) {
+        if !matches!(self.rows.get(self.ui.cursor), Some(RowRef::NodeRow(_, _))) {
+            return;
+        }
+        self.ui.node_col = if delta.is_negative() {
+            self.ui.node_col.saturating_sub(1)
+        } else {
+            self.ui.node_col.saturating_add(1)
+        };
+        self.fix_node_col();
+    }
+
+    fn collapse_provider(&mut self, provider_idx: usize) {
+        if let Some(provider) = self.mihomo.providers.get_mut(provider_idx) {
+            provider.expanded = false;
+        }
+        self.rebuild_rows();
+        if let Some(idx) = self
+            .rows
+            .iter()
+            .position(|row| matches!(row, RowRef::Provider(idx) if *idx == provider_idx))
+        {
+            self.ui.cursor = idx;
+        }
+        self.fix_node_col();
+        self.keep_cursor_visible();
     }
 
     fn fix_node_col(&mut self) {

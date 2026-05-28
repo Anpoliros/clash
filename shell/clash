@@ -81,10 +81,37 @@ yq_read() {
 yq_write() {
     require_yq || return 1
     local expr="$1"
-    if yq -i "$expr" "$CONFIG_FILE" >/dev/null 2>&1; then
-        return 0
+    local tmp
+    tmp="$(mktemp "$CONFIG_FILE.tmp.XXXXXX")" || return 1
+    cp "$CONFIG_FILE" "$tmp" || {
+        rm -f "$tmp"
+        return 1
+    }
+    if ! yq -i "$expr" "$tmp" >/dev/null 2>&1; then
+        yq -y -i "$expr" "$tmp" >/dev/null 2>&1 || {
+            rm -f "$tmp"
+            return 1
+        }
     fi
-    yq -y -i "$expr" "$CONFIG_FILE"
+    yq_validate_file "$tmp" || {
+        rm -f "$tmp"
+        die "写入后的 YAML 校验失败，已保留原配置"
+        return 1
+    }
+    mv "$tmp" "$CONFIG_FILE"
+}
+
+yq_validate_file() {
+    command -v yq >/dev/null 2>&1 || return 1
+    yq -r '.' "$1" >/dev/null 2>&1
+}
+
+require_valid_config() {
+    require_yq || return 1
+    if ! yq_validate_file "$CONFIG_FILE"; then
+        die "config.yaml YAML 语法错误，请先运行：clash config clean"
+        return 1
+    fi
 }
 
 json_quote() {
@@ -388,29 +415,78 @@ show_log() {
 # #----订阅配置----
 usage_config() {
     cat <<'EOF'
-Usage:
-  clash config add -n NAME -u URL [-p PATH]
+用法：
+  clash config add -n 名称 -u 订阅链接 [-p 保存路径]
   clash config ls
-  clash config rm  -n NAME
+  clash config rm  -n 名称
+  clash config clean
+
+示例：
+  clash config add -n airport -u https://example.com/sub.yaml
+  clash config add -n airport -u https://example.com/sub.yaml -p /home/me/.config/mihomo/providers/airport.yaml
+  clash config rm -n airport
+  clash config clean
 EOF
+}
+
+is_blank_value() {
+    [ -z "$(printf '%s' "${1:-}" | tr -d '[:space:]')" ]
+}
+
+require_option_value() {
+    local opt="$1"
+    local value="${2-}"
+    if [ "$#" -lt 2 ] || is_blank_value "$value"; then
+        die "参数 $opt 需要非空值"
+        return 1
+    fi
+    case "$value" in
+        -*) die "参数 $opt 需要非空值，收到疑似选项：$value"; return 1 ;;
+    esac
 }
 
 config_add() {
     local name="" url="" provider_path=""
+    case "${1:-}" in
+        -h|--help) usage_config; return 0 ;;
+    esac
+    if [ "$#" -lt 4 ]; then
+        usage_config
+        die "config add 至少需要：-n 名称 -u 订阅链接"
+        return 1
+    fi
+    if [ $(( $# % 2 )) -ne 0 ]; then
+        usage_config
+        die "config add 参数不完整，请检查是否缺少某个选项值"
+        return 1
+    fi
     while [ $# -gt 0 ]; do
         case "$1" in
-            -n|--name) name="$2"; shift 2 ;;
-            -u|--url) url="$2"; shift 2 ;;
-            -p|--path) provider_path="$2"; shift 2 ;;
+            -h|--help) usage_config; return 0 ;;
+            -n|--name) require_option_value "$1" "${2-}" || return 1; name="$2"; shift 2 ;;
+            -u|--url) require_option_value "$1" "${2-}" || return 1; url="$2"; shift 2 ;;
+            -p|--path) require_option_value "$1" "${2-}" || return 1; provider_path="$2"; shift 2 ;;
             *) usage_config; return 1 ;;
         esac
     done
-    [ -n "$name" ] || die "缺少订阅名：-n/--name"
-    [ -n "$url" ] || die "缺少订阅链接：-u/--url"
-    [ -n "$provider_path" ] || provider_path="$CLASH_DIR/providers/$name.yaml"
+    if is_blank_value "$name"; then
+        die "缺少订阅名：-n/--name"
+        return 1
+    fi
+    if is_blank_value "$url"; then
+        die "缺少订阅链接：-u/--url"
+        return 1
+    fi
+    [ -n "$provider_path" ] || provider_path="./providers/$name.yaml"
+    if is_blank_value "$provider_path"; then
+        die "订阅保存路径不能为空：-p/--path"
+        return 1
+    fi
 
+    require_valid_config || return 1
     mkdir -p "$CLASH_DIR/providers"
     backup_config || return 1
+    config_sanitize || return 1
 
     local q_name q_url q_path q_prefix
     q_name="$(json_quote "$name")"
@@ -442,26 +518,117 @@ config_add() {
 config_ls() {
     require_yq || return 1
     yq -r '."proxy-providers" // {} | to_entries[] | "\(.key)\t\(.value.url // "-")"' "$CONFIG_FILE" |
-        awk 'BEGIN { printf "%-24s %s\n", "NAME", "URL"; printf "%-24s %s\n", "----", "---" } { printf "%-24s %s\n", $1, $2 }'
+        awk -F '\t' '
+            BEGIN { max = 4 }
+            {
+                rows[++count] = $0
+                if (length($1) > max) max = length($1)
+            }
+            END {
+                printf "%-*s   %s\n", max, "NAME", "URL"
+                printf "%-*s   %s\n", max, "----", "---"
+                for (i = 1; i <= count; i++) {
+                    split(rows[i], cols, "\t")
+                    printf "%-*s   %s\n", max, cols[1], cols[2]
+                }
+            }'
 }
 
 config_rm() {
     local name=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            -n|--name) name="$2"; shift 2 ;;
-            -u|--url|-p|--path) shift 2 ;;
+            -h|--help) usage_config; return 0 ;;
+            -n|--name) require_option_value "$1" "${2-}" || return 1; name="$2"; shift 2 ;;
+            -u|--url|-p|--path) require_option_value "$1" "${2-}" || return 1; shift 2 ;;
             *) usage_config; return 1 ;;
         esac
     done
-    [ -n "$name" ] || die "缺少订阅名：-n/--name"
+    if is_blank_value "$name"; then
+        die "缺少订阅名：-n/--name"
+        return 1
+    fi
 
+    require_valid_config || return 1
     backup_config || return 1
     local q_name
     q_name="$(json_quote "$name")"
     yq_write "del(.\"proxy-providers\"[$q_name]) |
       (.\"proxy-groups\"[]?.use) |= ((. // []) - [$q_name])" || return 1
     info "Provider removed: $name"
+}
+
+config_sanitize() {
+    local expr
+    expr='
+      ."proxy-providers" = (
+        (."proxy-providers" // {}) |
+        with_entries(
+          select(
+            ((.key | tostring | gsub("\\s"; "")) != "") and
+            ((.value.url // "" | tostring | gsub("\\s"; "")) != "")
+          )
+        )
+      ) |
+      (."proxy-providers" | keys) as $provider_names |
+      if ."proxy-groups"? then
+        ."proxy-groups" |= map(
+          if has("use") then
+            .use |= ((. // []) | map(select((. | tostring | gsub("\\s"; "")) != "")) | map(select(. as $name | ($provider_names | index($name)) != null)))
+          else . end
+        )
+      else . end |
+      if (.use? | type) == "object" and (.use.use? | type) == "array" then
+        .use.use |= ((. // []) | map(select((. | tostring | gsub("\\s"; "")) != "")) | map(select(. as $name | ($provider_names | index($name)) != null)))
+      else . end
+    '
+    yq_write "$expr"
+}
+
+restore_valid_config_from_backup() {
+    local backup
+    while IFS= read -r backup; do
+        [ -n "$backup" ] || continue
+        if yq_validate_file "$backup"; then
+            cp "$backup" "$CONFIG_FILE" || return 1
+            info "已从可解析备份恢复：$backup"
+            return 0
+        fi
+    done <<EOF
+$(find "$CLASH_DIR" -maxdepth 1 -type f -name 'config.yaml.bak*' 2>/dev/null | sort -r)
+EOF
+    return 1
+}
+
+restore_config_from_example() {
+    local example="$CLASH_DIR/example.config.yaml"
+    [ -f "$example" ] || return 1
+    yq_validate_file "$example" || return 1
+    cp "$example" "$CONFIG_FILE" || return 1
+    info "未找到可解析备份，已使用 example.config.yaml 重建基础配置"
+}
+
+config_clean() {
+    require_yq || return 1
+
+    if ! yq_validate_file "$CONFIG_FILE"; then
+        info "config.yaml YAML 语法错误，尝试从备份恢复..."
+        restore_valid_config_from_backup || restore_config_from_example || die "无法自动修复 config.yaml 语法错误"
+    fi
+
+    config_sanitize || return 1
+    if ! yq_validate_file "$CONFIG_FILE"; then
+        die "清理后 YAML 校验失败"
+        return 1
+    fi
+
+    if [ -d "$CLASH_DIR/providers" ]; then
+        find "$CLASH_DIR/providers" -mindepth 1 -maxdepth 1 -type f \( -name '*.yaml' -o -name '*.yml' \) -delete
+        info "已移除 providers 缓存：$CLASH_DIR/providers"
+    fi
+    find "$CLASH_DIR" -maxdepth 1 -type f -name 'config.yaml.bak*' -delete
+    info "已移除 config.yaml.bak 缓存"
+    info "config.yaml clean 完成"
 }
 
 config_cmd() {
@@ -471,6 +638,8 @@ config_cmd() {
         add) config_add "$@" ;;
         ls|list) config_ls ;;
         rm|remove) config_rm "$@" ;;
+        clean) config_clean ;;
+        -h|--help|help) usage_config ;;
         *) usage_config; return 1 ;;
     esac
 }
@@ -554,18 +723,23 @@ tui_cmd() {
 # #----帮助----
 usage() {
     cat <<'EOF'
-Usage:
-  clash                 Show short status
-  clash status          Show detailed status
-  clash on              Start mihomo in normal mode and export proxy env
-  clash tun             Start mihomo in TUN mode with sudo validation
-  clash off             Stop mihomo and unset proxy env
-  clash env             Sync current shell proxy env with mihomo state
-  clash log             Follow mihomo.log with less +F
-  clash tui             Run/build/develop the terminal UI
-  clash config add      Add provider to config.yaml
-  clash config ls       List provider names and URLs
-  clash config rm       Remove provider from config.yaml
+用法：
+  clash                 显示简要状态
+  clash status          显示详细状态
+  clash on              普通模式启动 mihomo，并导出代理环境变量
+  clash tun             TUN 模式启动 mihomo，会先进行 sudo 验证
+  clash off             停止 mihomo，并清理代理环境变量
+  clash env             根据 mihomo 状态同步当前 shell 的代理环境变量
+  clash log             使用 less +F 跟随 mihomo.log
+  clash tui             运行、构建或开发终端界面
+  clash config add      添加订阅 Provider 到 config.yaml
+  clash config ls       列出订阅 Provider 名称和链接
+  clash config rm       从 config.yaml 移除订阅 Provider
+  clash config clean    修复并清理订阅配置缓存
+
+更多帮助：
+  clash tui -h
+  clash config -h
 EOF
 }
 
