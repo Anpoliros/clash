@@ -6,7 +6,7 @@
 
 - 文档服务于修改代码，而不是复述代码。
 - 优先记录稳定约定：模块职责、外部 API、数据模型、运行流程、生成产物、验证方式和风险边界。
-- `clash-tui` 是 Runtime First 客户端，文档应明确哪些操作发生在 mihomo 运行态，哪些操作会写入 `runtime.yaml`。
+- `clash-tui` 是 Runtime First 客户端，文档应明确哪些操作发生在 mihomo 运行态，哪些操作会写入工作目录内的配置文件。
 - 用户原始 mihomo 配置是保护对象。任何会影响 `config.yaml`、订阅缓存或工作目录文件的改动，都要在文档中写清楚。
 - 不为每个小文件写文档；只有核心模块、公共接口、关键流程和容易误改的地方需要独立文档。
 - 修改核心逻辑时，同步检查相关文档和 `docs/MAP.md`。
@@ -146,7 +146,7 @@ docs/decisions/0002-runtime-config-location.md
 
 - 新增、删除或重命名 `/tui/src` 下的核心目录。
 - 修改 CLI 参数、启动流程、工作目录发现或 mihomo 二进制发现。
-- 修改 `runtime.yaml` 生成位置、字段、默认值、TUN 写入逻辑或用户配置保护策略。
+- 修改运行配置读取、字段默认值、TUN 写入逻辑或用户配置保护策略。
 - 修改 mihomo external-controller API、认证、请求超时、WebSocket 日志、测速 URL 或 Provider 刷新逻辑。
 - 修改 Proxy/TUN 开关、sudo 验证、PID 文件、子进程环境变量隔离或日志捕获。
 - 修改 `AppEvent`、应用状态结构、页面状态、快捷键、鼠标点击区域或 UI 布局。
@@ -177,4 +177,3 @@ docs/decisions/0002-runtime-config-location.md
 - 解释“为什么这样设计”和“修改时要注意什么”，避免逐行解释源码。
 - 对 agent 重要的信息要显式写出：入口文件、影响范围、验证命令、不要改动的边界。
 - 源码注释继续遵循项目要求：简要中文注释，必要时使用 `#----xxx----` 划分模块。
-

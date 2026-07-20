@@ -13,7 +13,7 @@ use tokio::sync::mpsc;
 use unicode_width::UnicodeWidthStr;
 
 use crate::{
-    config::app_config,
+    config::{app_config, rules_config, rules_config::RuleGroup},
     events::{self, AppEvent},
     mihomo::models::{DelayHistory, ProviderItem, ProxyItem},
     runtime::bootstrap::BootContext,
@@ -29,6 +29,8 @@ const GENERAL_CONTENT_TOP: u16 = 3;
 const GENERAL_TOTAL_ROWS: usize = 18;
 const GENERAL_CURSOR_ROWS: [usize; GENERAL_MAX_CURSOR + 1] =
     [1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 16, 17];
+const RULES_LIST_HEADER_ROWS: usize = 6;
+const RULES_DETAIL_HEADER_ROWS: usize = 7;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Page {
@@ -49,9 +51,12 @@ pub struct UiState {
     pub node_columns: usize,
     pub config_edit: Option<ConfigField>,
     pub input_buffer: String,
+    pub input_cursor: usize,
     pub ticks: u64,
     pub logs_open: bool,
+    pub help_open: bool,
     pub status: String,
+    pub rule_input: Option<RuleInput>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -61,6 +66,16 @@ pub enum ConfigField {
     NodeMinGapWidth,
     NodeReserveWidth,
     NodeColumnGapWidth,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RuleInput {
+    Search,
+    NewGroup,
+    RenameGroup(usize),
+    EditTarget(usize),
+    AddRule(usize),
+    EditRule(usize, usize),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -102,6 +117,15 @@ pub struct MihomoState {
     pub providers: Vec<ProviderView>,
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct RulesState {
+    pub groups: Vec<RuleGroup>,
+    pub detail_group: Option<usize>,
+    pub comma_display: bool,
+    pub search: String,
+    pub config_backup_done: bool,
+}
+
 #[derive(Clone, Debug)]
 pub struct ProviderView {
     pub name: String,
@@ -128,6 +152,7 @@ pub struct App {
     pub ui: UiState,
     pub runtime: RuntimeState,
     pub mihomo: MihomoState,
+    pub rules: RulesState,
     pub rows: Vec<RowRef>,
     pub logs: Vec<String>,
     event_tx: mpsc::UnboundedSender<AppEvent>,
@@ -196,11 +221,23 @@ impl App {
                 node_columns: 2,
                 config_edit: None,
                 input_buffer: String::new(),
+                input_cursor: 0,
                 ticks: 0,
                 logs_open: false,
+                help_open: false,
                 status: "Ready".into(),
+                rule_input: None,
             },
             mihomo: MihomoState::default(),
+            rules: RulesState {
+                groups: rules_config::load(&boot.source_config, &boot.work_dir)
+                    .map(|config| config.groups)
+                    .unwrap_or_default(),
+                detail_group: None,
+                comma_display: false,
+                search: String::new(),
+                config_backup_done: false,
+            },
             rows: Vec::new(),
             logs: Vec::new(),
             boot,
@@ -238,8 +275,20 @@ impl App {
         if key.modifiers.contains(KeyModifiers::CONTROL) && matches!(key.code, KeyCode::Char('c')) {
             return Ok(true);
         }
+        if self.ui.rule_input.is_some() {
+            return self.handle_rule_input(key).await;
+        }
         if self.ui.config_edit.is_some() {
             return self.handle_config_input(key);
+        }
+        if self.ui.help_open {
+            if matches!(
+                key.code,
+                KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('?')
+            ) {
+                self.ui.help_open = false;
+            }
+            return Ok(false);
         }
         if self.ui.logs_open {
             if matches!(key.code, KeyCode::Esc | KeyCode::Char('q')) {
@@ -249,7 +298,13 @@ impl App {
         }
 
         match key.code {
+            KeyCode::Char('q')
+                if self.ui.page == Page::Rules && self.rules.detail_group.is_some() =>
+            {
+                self.rules_back_or_clear_search()
+            }
             KeyCode::Char('q') => return Ok(true),
+            KeyCode::Char('?') => self.ui.help_open = true,
             KeyCode::Char('1') => self.ui.page = Page::Proxies,
             KeyCode::Char('2') => self.ui.page = Page::General,
             KeyCode::Char('3') => self.ui.page = Page::Rules,
@@ -264,18 +319,60 @@ impl App {
                 self.handle_action_result(result);
             }
             KeyCode::Char(' ') => {
-                let result = self.activate().await;
+                let result = if self.ui.page == Page::Rules {
+                    self.toggle_selected_rule_group().await
+                } else {
+                    self.activate().await
+                };
                 self.handle_action_result(result);
             }
-            KeyCode::Char('r') | KeyCode::Char('R') => {
+            KeyCode::Char('r') | KeyCode::Char('R') if self.ui.page == Page::Proxies => {
                 let result = self.refresh_selected_provider().await;
                 self.handle_action_result(result);
             }
-            KeyCode::Char('p') | KeyCode::Char('P') => {
+            KeyCode::Char('p') | KeyCode::Char('P') if self.ui.page == Page::Proxies => {
                 let result = self.ping_selected_provider().await;
                 self.handle_action_result(result);
             }
-            KeyCode::Char('s') | KeyCode::Char('S') => self.sort_selected_provider(),
+            KeyCode::Char('s') | KeyCode::Char('S') if self.ui.page == Page::Proxies => {
+                self.sort_selected_provider()
+            }
+            KeyCode::Char('/') if self.ui.page == Page::Rules => self.start_rule_search(),
+            KeyCode::Esc if self.ui.page == Page::Rules => self.rules_back_or_clear_search(),
+            KeyCode::Char('n') | KeyCode::Char('N') if self.ui.page == Page::Rules => {
+                self.ui.cursor = 0;
+                self.ui.scroll = 0;
+                self.start_rule_input(RuleInput::NewGroup, "")
+            }
+            KeyCode::Char('e') | KeyCode::Char('E') if self.ui.page == Page::Rules => {
+                self.start_edit_selected_rule_item()
+            }
+            KeyCode::Char('m') | KeyCode::Char('M') if self.ui.page == Page::Rules => {
+                self.start_rename_selected_rule_group()
+            }
+            KeyCode::Char('x') | KeyCode::Char('X') if self.ui.page == Page::Rules => {
+                let result = self.delete_selected_rule_item().await;
+                self.handle_action_result(result);
+            }
+            KeyCode::Char('t') | KeyCode::Char('T') if self.ui.page == Page::Rules => {
+                self.rules.comma_display = !self.rules.comma_display;
+                self.ui.status = if self.rules.comma_display {
+                    "Rules 已切换为逗号原文显示".into()
+                } else {
+                    "Rules 已切换为制表显示".into()
+                };
+            }
+            KeyCode::Char('a') | KeyCode::Char('A') if self.ui.page == Page::Rules => {
+                self.start_add_rule()
+            }
+            KeyCode::Char('J') if self.ui.page == Page::Rules => {
+                let result = self.move_selected_rule_item(1).await;
+                self.handle_action_result(result);
+            }
+            KeyCode::Char('K') if self.ui.page == Page::Rules => {
+                let result = self.move_selected_rule_item(-1).await;
+                self.handle_action_result(result);
+            }
             _ => {}
         }
         Ok(false)
@@ -354,7 +451,13 @@ impl App {
                     }
                 }
             }
-            Page::Rules => {}
+            Page::Rules => {
+                if self.rules.detail_group.is_some() {
+                    self.start_edit_selected_rule_item();
+                } else {
+                    self.enter_selected_rule_group();
+                }
+            }
         }
         Ok(())
     }
@@ -413,6 +516,10 @@ impl App {
     }
 
     pub async fn refresh(&mut self) {
+        // 外部工具可能修改 Provider，刷新时同步配置中的最新顺序。
+        if let Ok(config) = crate::config::runtime_config::prepare(&self.boot.source_config) {
+            self.boot.config.provider_names = config.provider_names;
+        }
         if let Ok(version) = self.boot.client.version().await {
             self.mihomo.version = version;
         }
@@ -484,6 +591,334 @@ impl App {
                 self.rebuild_rows();
             }
         }
+    }
+
+    // #----Rules 动作----
+    fn enter_selected_rule_group(&mut self) {
+        if self.rules.detail_group.is_some() {
+            return;
+        }
+        let Some(idx) = self.filtered_group_indices().get(self.ui.cursor).copied() else {
+            return;
+        };
+        self.rules.detail_group = Some(idx);
+        self.ui.cursor = 0;
+        self.ui.scroll = 0;
+        self.ui.status = format!("进入规则分组：{}", self.rules.groups[idx].name);
+    }
+
+    fn rules_back_or_clear_search(&mut self) {
+        if self.rules.detail_group.is_some() {
+            self.rules.detail_group = None;
+            self.ui.cursor = 0;
+            self.ui.scroll = 0;
+            self.ui.status = "已返回 Rules 分组列表".into();
+        } else if !self.rules.search.is_empty() {
+            self.rules.search.clear();
+            self.ui.cursor = 0;
+            self.ui.scroll = 0;
+            self.ui.status = "已清除 Rules 搜索".into();
+        }
+    }
+
+    fn start_rule_search(&mut self) {
+        self.ui.rule_input = Some(RuleInput::Search);
+        self.ui.input_buffer = self.rules.search.clone();
+        self.ui.input_cursor = char_len(&self.ui.input_buffer);
+        self.ui.status = "输入搜索关键字，Enter 应用，Esc 取消".into();
+    }
+
+    fn start_rule_input(&mut self, mode: RuleInput, value: &str) {
+        self.ui.rule_input = Some(mode);
+        self.ui.input_buffer = value.to_string();
+        self.ui.input_cursor = char_len(&self.ui.input_buffer);
+        self.ui.status = "输入内容后按 Enter 保存，Esc 取消".into();
+    }
+
+    fn start_edit_selected_rule_item(&mut self) {
+        if let Some(group_idx) = self.rules.detail_group {
+            let Some(rule_idx) = self
+                .filtered_rule_indices(group_idx)
+                .get(self.ui.cursor)
+                .copied()
+            else {
+                return;
+            };
+            let value = self.rules.groups[group_idx].rules[rule_idx].clone();
+            self.start_rule_input(RuleInput::EditRule(group_idx, rule_idx), &value);
+            return;
+        }
+        let Some(group_idx) = self.filtered_group_indices().get(self.ui.cursor).copied() else {
+            return;
+        };
+        let value = self.rules.groups[group_idx].target.clone();
+        self.start_rule_input(RuleInput::EditTarget(group_idx), &value);
+    }
+
+    fn start_rename_selected_rule_group(&mut self) {
+        if self.rules.detail_group.is_some() {
+            self.ui.status = "请返回分组列表后再改名".into();
+            return;
+        }
+        let Some(group_idx) = self.filtered_group_indices().get(self.ui.cursor).copied() else {
+            return;
+        };
+        let value = self.rules.groups[group_idx].name.clone();
+        self.start_rule_input(RuleInput::RenameGroup(group_idx), &value);
+    }
+
+    fn start_add_rule(&mut self) {
+        let Some(group_idx) = self.rules.detail_group else {
+            self.ui.status = "先进入一个分组再添加规则".into();
+            return;
+        };
+        self.ui.cursor = self.filtered_rule_indices(group_idx).len();
+        self.keep_cursor_visible();
+        self.start_rule_input(RuleInput::AddRule(group_idx), "");
+        self.ui.status = "输入规则，例如 DOMAIN-SUFFIX,google.com".into();
+    }
+
+    async fn toggle_selected_rule_group(&mut self) -> Result<()> {
+        if self.rules.detail_group.is_some() {
+            return Ok(());
+        }
+        let Some(group_idx) = self.filtered_group_indices().get(self.ui.cursor).copied() else {
+            return Ok(());
+        };
+        self.rules.groups[group_idx].active = !self.rules.groups[group_idx].active;
+        self.save_rules_and_reload().await?;
+        Ok(())
+    }
+
+    async fn delete_selected_rule_item(&mut self) -> Result<()> {
+        if let Some(group_idx) = self.rules.detail_group {
+            let Some(rule_idx) = self
+                .filtered_rule_indices(group_idx)
+                .get(self.ui.cursor)
+                .copied()
+            else {
+                return Ok(());
+            };
+            self.rules.groups[group_idx].rules.remove(rule_idx);
+            self.ui.cursor = self.ui.cursor.min(
+                self.filtered_rule_indices(group_idx)
+                    .len()
+                    .saturating_sub(1),
+            );
+            self.save_rules_and_reload().await?;
+            self.ui.status = "规则已删除并热加载".into();
+            return Ok(());
+        }
+
+        let Some(group_idx) = self.filtered_group_indices().get(self.ui.cursor).copied() else {
+            return Ok(());
+        };
+        let group = self.rules.groups.remove(group_idx);
+        rules_config::backup_rule_file(&group)?;
+        self.ui.cursor = self
+            .ui
+            .cursor
+            .min(self.filtered_group_indices().len().saturating_sub(1));
+        self.save_rules_and_reload().await?;
+        self.ui.status = format!("分组 {} 已删除，规则文件已备份", group.name);
+        Ok(())
+    }
+
+    async fn move_selected_rule_item(&mut self, delta: isize) -> Result<()> {
+        if let Some(group_idx) = self.rules.detail_group {
+            let Some(rule_idx) = self
+                .filtered_rule_indices(group_idx)
+                .get(self.ui.cursor)
+                .copied()
+            else {
+                return Ok(());
+            };
+            let next = move_index(rule_idx, delta, self.rules.groups[group_idx].rules.len());
+            self.rules.groups[group_idx].rules.swap(rule_idx, next);
+            self.ui.cursor = self
+                .filtered_rule_indices(group_idx)
+                .iter()
+                .position(|item| *item == next)
+                .unwrap_or(self.ui.cursor);
+            self.save_rules_and_reload().await?;
+            self.ui.status = "规则顺序已更新并热加载".into();
+            return Ok(());
+        }
+
+        let Some(group_idx) = self.filtered_group_indices().get(self.ui.cursor).copied() else {
+            return Ok(());
+        };
+        let next = move_index(group_idx, delta, self.rules.groups.len());
+        self.rules.groups.swap(group_idx, next);
+        self.ui.cursor = self
+            .filtered_group_indices()
+            .iter()
+            .position(|item| *item == next)
+            .unwrap_or(self.ui.cursor);
+        self.save_rules_and_reload().await?;
+        self.ui.status = "分组顺序已更新并热加载".into();
+        Ok(())
+    }
+
+    async fn handle_rule_input(&mut self, key: crossterm::event::KeyEvent) -> Result<bool> {
+        match key.code {
+            KeyCode::Esc => {
+                self.ui.rule_input = None;
+                self.ui.input_buffer.clear();
+                self.ui.input_cursor = 0;
+                self.ui.status = "已取消输入".into();
+            }
+            KeyCode::Enter => {
+                if let Err(err) = self.commit_rule_input().await {
+                    self.ui.status = format!("操作失败：{err}");
+                }
+            }
+            KeyCode::Backspace => {
+                if self.ui.input_cursor > 0 {
+                    self.ui.input_cursor -= 1;
+                    remove_char_at(&mut self.ui.input_buffer, self.ui.input_cursor);
+                }
+            }
+            KeyCode::Delete => {
+                remove_char_at(&mut self.ui.input_buffer, self.ui.input_cursor);
+            }
+            KeyCode::Left => {
+                self.ui.input_cursor = self.ui.input_cursor.saturating_sub(1);
+            }
+            KeyCode::Right => {
+                self.ui.input_cursor = self
+                    .ui
+                    .input_cursor
+                    .saturating_add(1)
+                    .min(char_len(&self.ui.input_buffer));
+            }
+            KeyCode::Home => {
+                self.ui.input_cursor = 0;
+            }
+            KeyCode::End => {
+                self.ui.input_cursor = char_len(&self.ui.input_buffer);
+            }
+            KeyCode::Char(ch) => {
+                if self.ui.input_buffer.len() < 240 {
+                    insert_char_at(&mut self.ui.input_buffer, self.ui.input_cursor, ch);
+                    self.ui.input_cursor += 1;
+                }
+            }
+            _ => {}
+        }
+        Ok(false)
+    }
+
+    async fn commit_rule_input(&mut self) -> Result<()> {
+        let Some(mode) = self.ui.rule_input.clone() else {
+            return Ok(());
+        };
+        let value = self.ui.input_buffer.trim().to_string();
+        match mode {
+            RuleInput::Search => {
+                self.rules.search = value;
+                self.ui.cursor = 0;
+                self.ui.scroll = 0;
+                self.ui.status = if self.rules.search.is_empty() {
+                    "已清除 Rules 搜索".into()
+                } else {
+                    format!("Rules 搜索：{}", self.rules.search)
+                };
+            }
+            RuleInput::NewGroup => {
+                rules_config::validate_group_name(&value)?;
+                if self.rules.groups.iter().any(|group| group.name == value) {
+                    return Err(anyhow::anyhow!("分组已存在"));
+                }
+                self.rules
+                    .groups
+                    .push(rules_config::create_group(&self.boot.work_dir, &value)?);
+                self.save_rules_and_reload().await?;
+                self.ui.status = format!("分组 {value} 已创建");
+            }
+            RuleInput::RenameGroup(idx) => {
+                rules_config::validate_group_name(&value)?;
+                if self
+                    .rules
+                    .groups
+                    .iter()
+                    .enumerate()
+                    .any(|(item_idx, group)| item_idx != idx && group.name == value)
+                {
+                    return Err(anyhow::anyhow!("分组已存在"));
+                }
+                if let Some(group) = self.rules.groups.get_mut(idx) {
+                    group.name = value.clone();
+                    group.path = self
+                        .boot
+                        .work_dir
+                        .join("rules")
+                        .join(format!("{value}.yaml"));
+                }
+                self.save_rules_and_reload().await?;
+                self.ui.status = format!("分组已改名为 {value}");
+            }
+            RuleInput::EditTarget(idx) => {
+                if value.is_empty() {
+                    return Err(anyhow::anyhow!("目标策略不能为空"));
+                }
+                if let Some(group) = self.rules.groups.get_mut(idx) {
+                    group.target = value.clone();
+                }
+                self.save_rules_and_reload().await?;
+                self.ui.status = format!("目标策略已改为 {value}");
+            }
+            RuleInput::AddRule(group_idx) => {
+                if value.is_empty() {
+                    return Err(anyhow::anyhow!("规则不能为空"));
+                }
+                if let Some(group) = self.rules.groups.get_mut(group_idx) {
+                    group.rules.push(value);
+                }
+                self.save_rules_and_reload().await?;
+                self.ui.status = "规则已添加并热加载".into();
+            }
+            RuleInput::EditRule(group_idx, rule_idx) => {
+                if value.is_empty() {
+                    return Err(anyhow::anyhow!("规则不能为空"));
+                }
+                if let Some(rule) = self
+                    .rules
+                    .groups
+                    .get_mut(group_idx)
+                    .and_then(|group| group.rules.get_mut(rule_idx))
+                {
+                    *rule = value;
+                }
+                self.save_rules_and_reload().await?;
+                self.ui.status = "规则已更新并热加载".into();
+            }
+        }
+        self.ui.rule_input = None;
+        self.ui.input_buffer.clear();
+        self.ui.input_cursor = 0;
+        self.keep_cursor_visible();
+        Ok(())
+    }
+
+    async fn save_rules_and_reload(&mut self) -> Result<()> {
+        rules_config::save(
+            &self.boot.source_config,
+            &self.boot.work_dir,
+            &rules_config::RulesConfig {
+                groups: self.rules.groups.clone(),
+            },
+            !self.rules.config_backup_done,
+        )?;
+        self.rules.config_backup_done = true;
+        let runtime_config = crate::config::runtime_config::prepare(&self.boot.source_config)?;
+        self.boot.config = runtime_config;
+        self.boot
+            .client
+            .reload_config(&self.boot.source_config.to_string_lossy())
+            .await?;
+        self.refresh().await;
+        Ok(())
     }
 
     // #----状态同步----
@@ -585,7 +1020,7 @@ impl App {
         let max = match self.ui.page {
             Page::General => GENERAL_MAX_CURSOR,
             Page::Proxies => self.rows.len().saturating_sub(1),
-            Page::Rules => 0,
+            Page::Rules => self.rules_cursor_len().saturating_sub(1),
         };
         self.ui.cursor = if delta.is_negative() {
             self.ui.cursor.saturating_sub((-delta) as usize)
@@ -633,9 +1068,45 @@ impl App {
         }
     }
 
+    pub fn filtered_group_indices(&self) -> Vec<usize> {
+        self.rules
+            .groups
+            .iter()
+            .enumerate()
+            .filter(|(_, group)| {
+                self.rules.search.is_empty()
+                    || group.name.contains(&self.rules.search)
+                    || group.target.contains(&self.rules.search)
+            })
+            .map(|(idx, _)| idx)
+            .collect()
+    }
+
+    pub fn filtered_rule_indices(&self, group_idx: usize) -> Vec<usize> {
+        self.rules
+            .groups
+            .get(group_idx)
+            .map(|group| {
+                group
+                    .rules
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, rule)| {
+                        self.rules.search.is_empty() || rule.contains(&self.rules.search)
+                    })
+                    .map(|(idx, _)| idx)
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     fn handle_horizontal(&mut self, delta: isize) {
         if self.ui.page == Page::General {
             self.adjust_node_item_width(delta);
+            return;
+        }
+        if self.ui.page == Page::Rules {
+            self.handle_rules_horizontal(delta);
             return;
         }
 
@@ -654,6 +1125,21 @@ impl App {
                 }
             }
             _ => {}
+        }
+    }
+
+    fn handle_rules_horizontal(&mut self, delta: isize) {
+        if self.rules.detail_group.is_some() {
+            if delta.is_negative() {
+                self.rules_back_or_clear_search();
+            }
+            return;
+        }
+        let Some(group_idx) = self.filtered_group_indices().get(self.ui.cursor).copied() else {
+            return;
+        };
+        if let Some(group) = self.rules.groups.get_mut(group_idx) {
+            group.expanded = delta.is_positive();
         }
     }
 
@@ -725,7 +1211,14 @@ impl App {
         match self.ui.page {
             Page::General => self.ui.terminal_height.saturating_sub(5).max(1) as usize,
             Page::Proxies => self.ui.terminal_height.saturating_sub(8).max(1) as usize,
-            Page::Rules => 1,
+            Page::Rules => {
+                let header = if self.rules.detail_group.is_some() {
+                    RULES_DETAIL_HEADER_ROWS
+                } else {
+                    RULES_LIST_HEADER_ROWS
+                };
+                self.ui.terminal_height.saturating_sub(header as u16).max(1) as usize
+            }
         }
     }
 
@@ -733,7 +1226,17 @@ impl App {
         match self.ui.page {
             Page::General => GENERAL_TOTAL_ROWS.saturating_sub(self.ui_visible_rows()),
             Page::Proxies => self.rows.len().saturating_sub(self.ui_visible_rows()),
-            Page::Rules => 0,
+            Page::Rules => self
+                .rules_cursor_len()
+                .saturating_sub(self.ui_visible_rows()),
+        }
+    }
+
+    fn rules_cursor_len(&self) -> usize {
+        if let Some(group_idx) = self.rules.detail_group {
+            self.filtered_rule_indices(group_idx).len()
+        } else {
+            self.filtered_group_indices().len()
         }
     }
 
@@ -1056,24 +1559,23 @@ fn build_from_real_providers(
     preferred_order: &[String],
     active: &str,
 ) -> Vec<ProviderView> {
-    let ordered: Vec<_> = if preferred_order.is_empty() {
-        providers
-            .iter()
-            .map(|(name, provider)| (name.clone(), provider.clone()))
-            .collect()
-    } else {
-        preferred_order
-            .iter()
-            .filter_map(|name| {
-                providers
-                    .get(name)
-                    .cloned()
-                    .map(|provider| (name.clone(), provider))
-            })
-            .collect()
-    };
+    let mut ordered = Vec::with_capacity(providers.len());
+    for name in preferred_order {
+        if let Some(provider) = providers.get(name) {
+            ordered.push((name.clone(), provider.clone()));
+        }
+    }
 
-    let mut list: Vec<_> = ordered
+    // 配置顺序只用于排序，不能成为白名单，否则外部新增 Provider 会被隐藏。
+    let mut remaining: Vec<_> = providers
+        .iter()
+        .filter(|(name, _)| !preferred_order.contains(name))
+        .map(|(name, provider)| (name.clone(), provider.clone()))
+        .collect();
+    remaining.sort_by(|a, b| a.0.cmp(&b.0));
+    ordered.extend(remaining);
+
+    let list: Vec<_> = ordered
         .into_iter()
         .map(|(fallback_name, provider)| ProviderView {
             name: if provider.name.is_empty() {
@@ -1090,9 +1592,6 @@ fn build_from_real_providers(
         })
         .filter(|provider| !provider.nodes.is_empty())
         .collect();
-    if preferred_order.is_empty() {
-        list.sort_by(|a, b| a.name.cmp(&b.name));
-    }
     list
 }
 
@@ -1168,6 +1667,43 @@ fn tab_page_from_column(column: u16) -> Option<Page> {
     }
 }
 
+fn move_index(idx: usize, delta: isize, len: usize) -> usize {
+    if len == 0 {
+        return idx;
+    }
+    if delta.is_negative() {
+        idx.saturating_sub((-delta) as usize)
+    } else {
+        idx.saturating_add(delta as usize)
+    }
+    .min(len.saturating_sub(1))
+}
+
+fn char_len(text: &str) -> usize {
+    text.chars().count()
+}
+
+fn byte_index_at(text: &str, char_idx: usize) -> usize {
+    text.char_indices()
+        .nth(char_idx)
+        .map(|(idx, _)| idx)
+        .unwrap_or(text.len())
+}
+
+fn insert_char_at(text: &mut String, char_idx: usize, ch: char) {
+    let byte_idx = byte_index_at(text, char_idx);
+    text.insert(byte_idx, ch);
+}
+
+fn remove_char_at(text: &mut String, char_idx: usize) {
+    let start = byte_index_at(text, char_idx);
+    if start >= text.len() {
+        return;
+    }
+    let end = byte_index_at(text, char_idx + 1);
+    text.replace_range(start..end, "");
+}
+
 fn delay_text(delay: Option<u64>) -> String {
     delay.map_or("--ms".into(), |value| format!("{value}ms"))
 }
@@ -1196,6 +1732,56 @@ fn is_emoji_char_for_layout(ch: char) -> bool {
             | 0x200D
             | 0x20E3
     )
+}
+
+// #----测试----
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::{build_from_real_providers, ProviderItem, ProxyItem};
+
+    fn provider(name: &str) -> ProviderItem {
+        ProviderItem {
+            name: name.into(),
+            proxies: vec![ProxyItem {
+                name: format!("{name}-node"),
+                ..ProxyItem::default()
+            }],
+        }
+    }
+
+    #[test]
+    fn provider_order_does_not_hide_new_runtime_provider() {
+        let providers = HashMap::from([
+            ("old".into(), provider("old")),
+            ("new".into(), provider("new")),
+        ]);
+
+        let views = build_from_real_providers(providers, &["old".into()], "");
+        let names: Vec<_> = views
+            .iter()
+            .map(|provider| provider.name.as_str())
+            .collect();
+
+        assert_eq!(names, ["old", "new"]);
+    }
+
+    #[test]
+    fn providers_without_preferred_order_are_stable() {
+        let providers = HashMap::from([
+            ("zeta".into(), provider("zeta")),
+            ("alpha".into(), provider("alpha")),
+        ]);
+
+        let views = build_from_real_providers(providers, &[], "");
+        let names: Vec<_> = views
+            .iter()
+            .map(|provider| provider.name.as_str())
+            .collect();
+
+        assert_eq!(names, ["alpha", "zeta"]);
+    }
 }
 
 // #----终端守卫----

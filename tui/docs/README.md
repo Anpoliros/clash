@@ -7,7 +7,7 @@
 ## 文档目标
 
 - 说明 `/tui` 的关键目录、模块职责和核心数据流。
-- 记录 mihomo external-controller、runtime.yaml、进程启停、TUN、日志和节点切换的维护边界。
+- 记录 mihomo external-controller、工作目录配置、进程启停、TUN、日志和节点切换的维护边界。
 - 帮助 coding agent 在改动前确认应该阅读的源码和文档。
 - 为后续新增功能沉淀稳定模板，避免隐含知识只留在代码里。
 

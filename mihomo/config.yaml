@@ -1,33 +1,53 @@
 port: 7890
 socks-port: 7891
-allow-lan: true
+allow-lan: false
 mode: rule
 log-level: info
 external-controller: 127.0.0.1:9090
 external-ui: ./ui
-secret: '890890'
+secret: 'CLASH-webui-890890'
 tun:
-  enable: false
-  stack: system
+  enable: true
+  stack: mixed
   auto-route: true
   auto-detect-interface: true
+  strict-route: false
+  route-exclude-address:
+    - 0.0.0.0/8
+    - 10.0.0.0/8
+    - 100.64.0.0/10
+    - 127.0.0.0/8
+    - 169.254.0.0/16
+    - 172.16.0.0/12
+    - 192.168.0.0/16
   dns-hijack:
     - any:53
   # exclude-uid:
     # - 996
 dns:
   enable: true
+  ipv6: false
   enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter:
+    - "*.lan"
+    - "*.local"
+    - "*.localhost"
+    - "+.internal"
+    - "localhost.ptlogin2.qq.com"
+    - "stun.*"
   nameserver:
     - 223.5.5.5
   fallback:
     - 1.1.1.1
     - 8.8.8.8
+    - https://1.1.1.1/dns-query
+    - https://dns.google/dns-query
 sniffer:
   enable: true
   sniffing:
-    - tls
-    - http
+  - tls
+  - http
 p:
   type: http
   interval: 3600
@@ -40,20 +60,44 @@ p:
 use:
   type: url-test
   use:
+  - kitty
+  - ikuuu
 proxy-providers:
 proxy-groups:
-  - name: 节点选择
-    type: select
-    proxies:
-      - 自动选择
-      - 全部节点
-    use: []  - type: url-test
-    use:
-    name: 自动选择
-  - name: 全部节点
-    type: select
-    use:
+- name: 节点选择
+  type: select
+  proxies:
+  - 自动选择
+  - 全部节点
+  use: []
+- type: url-test
+  use:
+  - ikuuu
+  - kitty
+  name: 自动选择
+- name: 全部节点
+  type: select
+  use:
+  - ikuuu
+  - kitty
 rules:
-  - DOMAIN-SUFFIX,google.com,节点选择
-  - GEOIP,CN,DIRECT
-  - MATCH,节点选择
+- RULE-SET,aliyun,DIRECT
+- DOMAIN-SUFFIX,google.com,节点选择
+- GEOIP,CN,DIRECT
+- MATCH,节点选择
+rule-providers:
+  aliyun:
+    type: file
+    path: ./rules/aliyun.yaml
+    behavior: classical
+    format: yaml
+  base:
+    type: file
+    path: ./rules/base.yaml
+    behavior: classical
+    format: yaml
+  test:
+    type: file
+    path: ./rules/test.yaml
+    behavior: classical
+    format: yaml

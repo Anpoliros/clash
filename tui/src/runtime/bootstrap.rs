@@ -1,4 +1,4 @@
-//! 启动编排：查找配置、生成 runtime.yaml，并准备 API 与进程管理上下文。
+//! 启动编排：查找配置、读取 controller，并准备 API 与进程管理上下文。
 
 use std::{
     fs,
@@ -19,6 +19,8 @@ pub struct BootContext {
     pub app_config: AppConfig,
     pub client: MihomoClient,
     pub process: MihomoProcess,
+    pub work_dir: PathBuf,
+    pub source_config: PathBuf,
 }
 
 // #----启动准备----
@@ -37,6 +39,8 @@ pub async fn bootstrap(work_dir: PathBuf) -> Result<BootContext> {
         app_config,
         client,
         process,
+        work_dir,
+        source_config,
     })
 }
 

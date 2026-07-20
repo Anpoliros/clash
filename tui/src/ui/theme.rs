@@ -5,7 +5,6 @@ use ratatui::style::{Color, Style};
 #[derive(Clone, Copy)]
 pub struct Theme {
     pub text: Style,
-    pub muted: Style,
     pub header: Style,
     pub hover: Style,
     pub active: Style,
@@ -17,7 +16,6 @@ impl Default for Theme {
     fn default() -> Self {
         Self {
             text: Style::default().fg(Color::Gray),
-            muted: Style::default().fg(Color::DarkGray),
             header: Style::default().fg(Color::Cyan),
             hover: Style::default().fg(Color::Black).bg(Color::Yellow),
             active: Style::default().fg(Color::Green),

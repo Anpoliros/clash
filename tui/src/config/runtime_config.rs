@@ -1,9 +1,6 @@
-//! runtime.yaml 管理：复制用户基础配置，并补齐 external-controller。
+//! 运行配置读取：从用户 mihomo 配置解析 controller、secret 和 Provider 顺序。
 
-use std::{
-    env, fs,
-    path::{Path, PathBuf},
-};
+use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
 use serde_yaml::{Mapping, Value};
@@ -15,27 +12,18 @@ pub struct RuntimeConfig {
     pub provider_names: Vec<String>,
 }
 
-// #----生成配置----
+// #----读取配置----
 pub fn prepare(source: &Path) -> Result<RuntimeConfig> {
     let raw = fs::read_to_string(source).context("读取用户配置失败")?;
-    let mut doc: Value = serde_yaml::from_str(&raw).context("解析 YAML 配置失败")?;
-    let root = ensure_mapping(&mut doc);
+    let doc: Value = serde_yaml::from_str(&raw).context("解析 YAML 配置失败")?;
+    let root = doc
+        .as_mapping()
+        .context("mihomo 配置顶层必须是 YAML 对象")?;
 
-    let controller = get_string(root, "external-controller").unwrap_or_else(|| {
-        let value = "127.0.0.1:9090".to_string();
-        root.insert(
-            Value::from("external-controller"),
-            Value::from(value.clone()),
-        );
-        value
-    });
+    let controller =
+        get_string(root, "external-controller").unwrap_or_else(|| "127.0.0.1:9090".into());
     let secret = get_string(root, "secret");
     let provider_names = provider_names_from_text(&raw).unwrap_or_else(|| provider_names(root));
-
-    let path = runtime_dir()?.join("runtime.yaml");
-    fs::create_dir_all(path.parent().expect("runtime path has parent"))
-        .context("创建 runtime 目录失败")?;
-    fs::write(&path, serde_yaml::to_string(&doc)?).context("写入 runtime.yaml 失败")?;
 
     Ok(RuntimeConfig {
         controller: normalize_controller(&controller),
@@ -45,21 +33,6 @@ pub fn prepare(source: &Path) -> Result<RuntimeConfig> {
 }
 
 // #----工具函数----
-fn runtime_dir() -> Result<PathBuf> {
-    let home = env::var_os("HOME").context("无法获取 HOME 环境变量")?;
-    Ok(PathBuf::from(home).join(".config/clash-tui"))
-}
-
-fn ensure_mapping(value: &mut Value) -> &mut Mapping {
-    if !matches!(value, Value::Mapping(_)) {
-        *value = Value::Mapping(Mapping::new());
-    }
-    match value {
-        Value::Mapping(map) => map,
-        _ => unreachable!(),
-    }
-}
-
 fn get_string(map: &Mapping, key: &str) -> Option<String> {
     let key = Value::from(key);
     map.get(&key).and_then(Value::as_str).map(ToOwned::to_owned)

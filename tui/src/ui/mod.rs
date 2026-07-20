@@ -3,7 +3,7 @@
 pub mod theme;
 
 use ratatui::{
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Layout, Rect},
     prelude::Frame,
     style::{Modifier, Style},
     text::{Line, Span},
@@ -11,7 +11,7 @@ use ratatui::{
 };
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
-use crate::app::{App, ConfigField, NodeLayout, Page, RowRef};
+use crate::app::{App, ConfigField, NodeLayout, Page, RowRef, RuleInput};
 
 use self::theme::Theme;
 
@@ -31,12 +31,15 @@ pub fn draw(frame: &mut Frame<'_>, app: &App) {
     match app.ui.page {
         Page::General => draw_general(frame, root[1], app, &theme),
         Page::Proxies => draw_proxies(frame, root[1], app, &theme),
-        Page::Rules => draw_rules(frame, root[1], &theme),
+        Page::Rules => draw_rules(frame, root[1], app, &theme),
     }
     draw_status(frame, root[2], app, &theme);
 
     if app.ui.logs_open {
         draw_logs(frame, frame.area(), app, &theme);
+    }
+    if app.ui.help_open {
+        draw_help(frame, frame.area(), app, &theme);
     }
 }
 
@@ -405,20 +408,404 @@ fn is_emoji_char(ch: char) -> bool {
     )
 }
 
-fn draw_rules(frame: &mut Frame<'_>, area: Rect, theme: &Theme) {
-    let paragraph = Paragraph::new("Rules 页面暂不实现。MVP 聚焦 General 与 Proxies。")
-        .alignment(Alignment::Center)
+// #----Rules 页面----
+fn draw_rules(frame: &mut Frame<'_>, area: Rect, app: &App, theme: &Theme) {
+    if let Some(group_idx) = app.rules.detail_group {
+        draw_rule_detail(frame, area, app, group_idx, theme);
+    } else {
+        draw_rule_groups(frame, area, app, theme);
+    }
+}
+
+fn draw_rule_groups(frame: &mut Frame<'_>, area: Rect, app: &App, theme: &Theme) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(5), Constraint::Min(1)])
+        .split(area);
+    let active = app
+        .rules
+        .groups
+        .iter()
+        .filter(|group| group.active)
+        .map(|group| group.name.as_str())
+        .collect::<Vec<_>>()
+        .join(" > ");
+    let search = if app.ui.rule_input == Some(RuleInput::Search) {
+        format!("{}_", app.ui.input_buffer)
+    } else if app.rules.search.is_empty() {
+        "-".to_string()
+    } else {
+        app.rules.search.clone()
+    };
+    let info = Paragraph::new(vec![
+        Line::from(vec![
+            Span::styled("Active  ", theme.header),
+            Span::raw(if active.is_empty() {
+                "-".to_string()
+            } else {
+                active
+            }),
+        ]),
+        Line::raw("Enter 进入 | Space 启停 | J/K 调整顺序 | n 新建 | e 改目标 | m 改名 | x 删除"),
+        Line::raw(format!(
+            "Search {search} | / 搜索 | t 切换显示 | 规则格式：TYPE,VALUE[,OPTION]"
+        )),
+    ])
+    .block(Block::default().title(" Rules ").borders(Borders::ALL))
+    .style(theme.text);
+    frame.render_widget(info, chunks[0]);
+
+    let indices = app.filtered_group_indices();
+    let visible_rows = chunks[1].height.saturating_sub(2).max(1) as usize;
+    let content_width = chunks[1].width.saturating_sub(2) as usize;
+    let mut items = Vec::new();
+    if app.ui.rule_input == Some(RuleInput::NewGroup) && app.ui.scroll == 0 {
+        let text = format!(
+            "{:<3} {:<7} {:<22} -> {:<16} {:>4} rules",
+            "*",
+            "new",
+            fit_middle_display_width(&format!("{}_", app.ui.input_buffer), 22, 6),
+            "PROXY",
+            0
+        );
+        items.push(ListItem::new(Line::from(Span::styled(
+            pad_display_width(&text, content_width),
+            theme.hover,
+        ))));
+    }
+    for (row_idx, group_idx) in indices.iter().enumerate().skip(app.ui.scroll) {
+        if items.len() >= visible_rows {
+            break;
+        }
+        let group = &app.rules.groups[*group_idx];
+        let state = if group.active { "active" } else { "off" };
+        let icon = if group.expanded { "v" } else { ">" };
+        let name_edit = app.ui.rule_input == Some(RuleInput::RenameGroup(*group_idx));
+        let target_edit = app.ui.rule_input == Some(RuleInput::EditTarget(*group_idx));
+        if name_edit || target_edit {
+            items.push(ListItem::new(editable_group_line(
+                row_idx,
+                icon,
+                state,
+                group,
+                name_edit,
+                target_edit,
+                content_width,
+                app,
+                theme,
+            )));
+        } else {
+            let text = format!(
+                "{:<3} {icon} {:<7} {:<22} -> {:<16} {:>4} rules",
+                row_idx + 1,
+                state,
+                fit_middle_display_width(&group.name, 22, 6),
+                fit_middle_display_width(&group.target, 16, 6),
+                group.rules.len()
+            );
+            let style = if row_idx == app.ui.cursor {
+                theme.hover
+            } else if group.active {
+                theme.active.add_modifier(Modifier::BOLD)
+            } else {
+                theme.text
+            };
+            items.push(ListItem::new(Line::from(Span::styled(
+                pad_display_width(&text, content_width),
+                style,
+            ))));
+        }
+        if group.expanded {
+            for rule in group.rules.iter().take(3) {
+                if items.len() >= visible_rows {
+                    break;
+                }
+                let preview = format!("      {rule}");
+                items.push(ListItem::new(Line::from(Span::styled(
+                    fit_middle_display_width(&preview, content_width, 12),
+                    theme.text,
+                ))));
+            }
+        }
+    }
+    let list = List::new(items)
+        .block(Block::default().title(" Groups ").borders(Borders::ALL))
+        .style(theme.text);
+    frame.render_widget(list, chunks[1]);
+}
+
+fn draw_rule_detail(frame: &mut Frame<'_>, area: Rect, app: &App, group_idx: usize, theme: &Theme) {
+    let Some(group) = app.rules.groups.get(group_idx) else {
+        return;
+    };
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(6), Constraint::Min(1)])
+        .split(area);
+    let search = if app.ui.rule_input == Some(RuleInput::Search) {
+        format!("{}_", app.ui.input_buffer)
+    } else if app.rules.search.is_empty() {
+        "-".to_string()
+    } else {
+        app.rules.search.clone()
+    };
+    let display = if app.rules.comma_display {
+        "comma"
+    } else {
+        "table"
+    };
+    let info = Paragraph::new(vec![
+        Line::from(vec![
+            Span::styled("Group   ", theme.header),
+            Span::raw(&group.name),
+            Span::raw("    "),
+            Span::styled("Target ", theme.header),
+            Span::raw(&group.target),
+        ]),
+        Line::raw("格式：DOMAIN-SUFFIX,google.com | IP-CIDR,1.1.1.1/32,no-resolve"),
+        Line::raw("a 添加 | e 编辑 | x 删除 | J/K 调整顺序 | / 搜索 | t 制表/逗号 | Esc 返回"),
+        Line::raw(format!("Search {search} | Display {display}")),
+    ])
+    .block(Block::default().title(" Rule Group ").borders(Borders::ALL))
+    .style(theme.text);
+    frame.render_widget(info, chunks[0]);
+
+    let indices = app.filtered_rule_indices(group_idx);
+    let visible_rows = chunks[1].height.saturating_sub(2).max(1) as usize;
+    let content_width = chunks[1].width.saturating_sub(2) as usize;
+    let mut items = indices
+        .iter()
+        .enumerate()
+        .skip(app.ui.scroll)
+        .take(visible_rows)
+        .map(|(row_idx, rule_idx)| {
+            if app.ui.rule_input == Some(RuleInput::EditRule(group_idx, *rule_idx)) {
+                return ListItem::new(cursor_line(
+                    &app.ui.input_buffer,
+                    app.ui.input_cursor,
+                    content_width,
+                    theme.hover,
+                    theme.status,
+                ));
+            }
+            let raw = group.rules[*rule_idx].clone();
+            let text = if app.rules.comma_display {
+                raw
+            } else {
+                tabular_rule(&raw, chunks[1].width.saturating_sub(4) as usize)
+            };
+            let style = if row_idx == app.ui.cursor {
+                theme.hover
+            } else {
+                theme.text
+            };
+            ListItem::new(Line::from(Span::styled(
+                pad_display_width(&text, content_width),
+                style,
+            )))
+        })
+        .collect::<Vec<_>>();
+    if app.ui.rule_input == Some(RuleInput::AddRule(group_idx)) {
+        items.push(ListItem::new(cursor_line(
+            &app.ui.input_buffer,
+            app.ui.input_cursor,
+            content_width,
+            theme.hover,
+            theme.status,
+        )));
+    }
+    let list = List::new(items)
         .block(Block::default().title(" Rules ").borders(Borders::ALL))
-        .style(theme.muted);
-    frame.render_widget(paragraph, area);
+        .style(theme.text);
+    frame.render_widget(list, chunks[1]);
+}
+
+fn editable_group_line<'a>(
+    row_idx: usize,
+    icon: &str,
+    state: &str,
+    group: &crate::config::rules_config::RuleGroup,
+    name_edit: bool,
+    target_edit: bool,
+    width: usize,
+    app: &App,
+    theme: &Theme,
+) -> Line<'a> {
+    let mut spans = vec![Span::styled(
+        format!("{:<3} {icon} {:<7} ", row_idx + 1, state),
+        theme.hover,
+    )];
+    if name_edit {
+        spans.extend(cursor_spans(
+            &pad_display_width(&app.ui.input_buffer, 22),
+            app.ui.input_cursor,
+            theme.hover,
+            theme.status,
+        ));
+    } else {
+        spans.push(Span::styled(
+            fit_middle_display_width(&group.name, 22, 6),
+            theme.hover,
+        ));
+    }
+    spans.push(Span::styled(" -> ", theme.hover));
+    if target_edit {
+        spans.extend(cursor_spans(
+            &pad_display_width(&app.ui.input_buffer, 16),
+            app.ui.input_cursor,
+            theme.hover,
+            theme.status,
+        ));
+    } else {
+        spans.push(Span::styled(
+            fit_middle_display_width(&group.target, 16, 6),
+            theme.hover,
+        ));
+    }
+    spans.push(Span::styled(
+        format!(" {:>4} rules", group.rules.len()),
+        theme.hover,
+    ));
+    let used = spans
+        .iter()
+        .map(|span| UnicodeWidthStr::width(span.content.as_ref()))
+        .sum::<usize>();
+    if used < width {
+        spans.push(Span::styled(" ".repeat(width - used), theme.hover));
+    }
+    Line::from(spans)
+}
+
+fn tabular_rule(raw: &str, width: usize) -> String {
+    let mut parts = raw.split(',').map(str::trim);
+    let kind = parts.next().unwrap_or_default();
+    let value = parts.next().unwrap_or_default();
+    let option = parts.collect::<Vec<_>>().join(",");
+    let line = if option.is_empty() {
+        format!("{kind:<16} {value}")
+    } else {
+        format!("{kind:<16} {value:<36} {option}")
+    };
+    fit_middle_display_width(&line, width.max(20), 10)
+}
+
+fn cursor_line<'a>(
+    text: &str,
+    cursor: usize,
+    width: usize,
+    style: Style,
+    cursor_style: Style,
+) -> Line<'a> {
+    let mut spans = cursor_spans(text, cursor, style, cursor_style);
+    let used = UnicodeWidthStr::width(text);
+    if used < width {
+        spans.push(Span::styled(" ".repeat(width - used), style));
+    }
+    Line::from(spans)
+}
+
+fn cursor_spans<'a>(text: &str, cursor: usize, style: Style, cursor_style: Style) -> Vec<Span<'a>> {
+    let mut spans = Vec::new();
+    for (idx, ch) in text.chars().enumerate() {
+        if idx == cursor {
+            spans.push(Span::styled(ch.to_string(), cursor_style));
+        } else {
+            spans.push(Span::styled(ch.to_string(), style));
+        }
+    }
+    if cursor >= text.chars().count() {
+        spans.push(Span::styled(" ", cursor_style));
+    }
+    spans
 }
 
 fn draw_status(frame: &mut Frame<'_>, area: Rect, app: &App, theme: &Theme) {
-    let text = format!(
-        " {} | Tab 切换页面 | j/k 移动 | h/l 展开或列移动 | Enter 操作 | q 退出",
-        app.ui.status
-    );
+    let text = if app.ui.rule_input.is_some() {
+        format!(
+            " {} | Enter 保存 | Esc 取消 | ←/→ 移动 | Home/End 跳转",
+            app.ui.status
+        )
+    } else if app.ui.config_edit.is_some() {
+        format!(" {} | 输入：{}_", app.ui.status, app.ui.input_buffer)
+    } else if app.ui.page == Page::Rules && app.rules.detail_group.is_some() {
+        format!(
+            " {} | Enter 编辑 | a 添加 | x 删除 | J/K 调序 | q 返回 | ? 帮助",
+            app.ui.status
+        )
+    } else if app.ui.page == Page::Rules {
+        format!(
+            " {} | Enter 进入 | Space 启停 | l 展开 | h 收起 | J/K 调序 | ? 帮助",
+            app.ui.status
+        )
+    } else {
+        format!(
+            " {} | Tab 切换页面 | j/k 移动 | h/l 展开或列移动 | Enter 操作 | ? 帮助",
+            app.ui.status
+        )
+    };
     frame.render_widget(Paragraph::new(text).style(theme.status), area);
+}
+
+// #----帮助浮层----
+fn draw_help(frame: &mut Frame<'_>, area: Rect, app: &App, theme: &Theme) {
+    let popup = centered_rect(area, 84, 72);
+    frame.render_widget(Clear, popup);
+    let lines = match app.ui.page {
+        Page::Rules if app.rules.detail_group.is_some() => vec![
+            "Rule Group",
+            "",
+            "j/k 或 ↑/↓        移动焦点",
+            "Enter / e          编辑当前规则",
+            "a                  添加规则",
+            "x                  删除规则",
+            "J/K                调整规则顺序",
+            "t                  制表/逗号显示切换",
+            "/                  搜索规则",
+            "q / h / Esc         返回 Rules 分组列表",
+            "",
+            "编辑中：Enter 保存，Esc 取消，←/→ 移动光标，Home/End 跳转。",
+        ],
+        Page::Rules => vec![
+            "Rules",
+            "",
+            "j/k 或 ↑/↓        移动焦点",
+            "Enter              进入分组",
+            "Space              启用/停用分组",
+            "l / →              展开分组预览",
+            "h / ←              收起分组预览",
+            "J/K                调整分组顺序",
+            "n                  新建分组",
+            "e                  编辑目标策略",
+            "m                  分组改名",
+            "x                  删除分组并备份规则文件",
+            "/                  搜索分组",
+        ],
+        Page::Proxies => vec![
+            "Proxies",
+            "",
+            "j/k 或 ↑/↓        移动焦点",
+            "h/l 或 ←/→        收起/展开或列移动",
+            "Enter / Space      选择节点或展开 Provider",
+            "r                  刷新 Provider",
+            "p                  Provider 测速",
+            "s                  按延迟排序",
+        ],
+        Page::General => vec![
+            "General",
+            "",
+            "j/k 或 ↑/↓        移动焦点",
+            "h/l 或 ←/→        调整布局数值",
+            "Enter              编辑当前配置项或打开日志",
+        ],
+    };
+    let paragraph = Paragraph::new(lines.join("\n"))
+        .block(
+            Block::default()
+                .title(" Help  Esc/q/? 关闭 ")
+                .borders(Borders::ALL),
+        )
+        .style(theme.text);
+    frame.render_widget(paragraph, popup);
 }
 
 // #----日志浮层----

@@ -140,6 +140,55 @@ config_value() {
     yq_read "$expr" 2>/dev/null | sed '/^null$/d'
 }
 
+reload_running_config() {
+    is_running || return 0
+    command -v curl >/dev/null 2>&1 || {
+        die "mihomo 正在运行，但缺少 curl，无法热加载配置"
+        return 1
+    }
+
+    local controller secret config_path payload response http_status body
+    controller="$(config_value '."external-controller" // "127.0.0.1:9090"')"
+    [ -n "$controller" ] || controller="127.0.0.1:9090"
+    case "$controller" in
+        http://*|https://*) ;;
+        *) controller="http://$controller" ;;
+    esac
+    controller="${controller%/}"
+
+    config_path="$(cd "$(dirname "$CONFIG_FILE")" && pwd)/$(basename "$CONFIG_FILE")"
+    payload="{\"path\":$(json_quote "$config_path"),\"payload\":\"\"}"
+    secret="$(config_value '.secret // ""')"
+
+    if [ -n "$secret" ]; then
+        response="$(curl --silent --show-error --noproxy '*' --connect-timeout 3 --max-time 30 \
+            --request PUT \
+            --header "Authorization: Bearer $secret" \
+            --header "Content-Type: application/json" \
+            --data "$payload" \
+            --write-out $'\n%{http_code}' \
+            "$controller/configs?force=true")" || return 1
+    else
+        response="$(curl --silent --show-error --noproxy '*' --connect-timeout 3 --max-time 30 \
+            --request PUT \
+            --header "Content-Type: application/json" \
+            --data "$payload" \
+            --write-out $'\n%{http_code}' \
+            "$controller/configs?force=true")" || return 1
+    fi
+
+    http_status="${response##*$'\n'}"
+    body="${response%$'\n'*}"
+    case "$http_status" in
+        2??) info "mihomo 配置已热加载" ;;
+        *)
+            [ -n "$body" ] || body="无响应内容"
+            die "mihomo 热加载失败（HTTP $http_status）：$body"
+            return 1
+            ;;
+    esac
+}
+
 fallback_tun_enabled() {
     awk '
         /^[[:space:]]*tun:[[:space:]]*$/ { in_tun = 1; next }
@@ -511,6 +560,10 @@ config_add() {
       (.\"proxy-groups\"[] | select(.name == \"自动选择\").use) |= (((. // []) + [$q_name]) | unique) |
       (.\"proxy-groups\"[] | select(.name == \"全部节点\").use) |= (((. // []) + [$q_name]) | unique)" || return 1
 
+    reload_running_config || {
+        die "Provider 已写入 config.yaml，但运行中的 mihomo 未能加载新配置"
+        return 1
+    }
     info "Provider added: $name"
     info "Path: $provider_path"
 }

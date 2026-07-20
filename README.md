@@ -42,6 +42,8 @@ clash config ls
 sudo apt install yq
 ```
 
+`clash config add` 写入成功后，如果检测到本目录的 mihomo 正在运行，会通过 external-controller 热加载配置，不会停止或重启服务；该步骤需要 `curl`。
+
 ## webui
 访问`localhost:9090/ui`
 
