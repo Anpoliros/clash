@@ -2,6 +2,7 @@
 *.log
 !.gitignore
 /archive
+/logs/
 
 /tui/target
 /tui/release
@@ -14,3 +15,4 @@ cache.db
 /providers/*
 /mihomo/providers/*
 *.bak*
+__pycache__/

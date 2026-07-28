@@ -1,5 +1,7 @@
 # Core Modules
 
+<!-- 修改时间：2026-07-28 18:15:12 +08:00 -->
+
 本文档说明 `/tui/src` 下核心模块的职责、边界和修改入口。
 
 ## 模块视角
@@ -59,7 +61,7 @@ TUI 不负责启动或停止 mihomo。Rules 保存只做配置热加载，不触
 
 节点切换由 `select_node` 完成。它优先选择真实节点组，再在根选择组上选择真实节点组，避免用户选中节点后仍被自动选择策略覆盖。需要回到 clash/mihomo 自动选择时，Proxies 页顶部的 `Auto Select` 行会把根选择组切回自动组。
 
-Proxies 页水平键按当前行决定动作：Provider 行用 `h/l` 收起或展开；节点行用 `h/l` 在列间移动，当光标已在最左侧节点列时再次按 `h` 会收起所属 Provider 并把光标放回 Provider 行。
+Proxies 页水平键按当前行决定动作：Provider 行用 `h/l` 收起或展开；节点行用 `h/l` 在列间移动，当光标已在最左侧节点列时再次按 `h` 会收起所属 Provider 并把光标放回 Provider 行。连续两次输入 `h` 或左方向键会收起全部 Provider，中间出现其他键盘或鼠标输入时重新计数。真实 Provider 如果携带 mihomo 的订阅信息，标题行会以 `remain <余额> expire <日期>` 显示；缺少信息时对应字段显示 `-`。
 
 Rules 首页用 `h/l` 收起或展开分组预览，预览只读；`Enter` 进入分组详情，`Space` 启停分组，`J/K` 调整分组优先级。分组详情页用 `Enter/e` 编辑当前规则，`a` 添加，`x` 删除，`J/K` 调整规则顺序，`q/h/Esc` 返回首页。Rules 编辑态支持 `Left/Right`、`Home/End`、`Backspace` 和 `Delete`，光标以反色字符显示。
 
@@ -79,7 +81,7 @@ Rules 首页用 `h/l` 收起或展开分组预览，预览只读；`Enter` 进�
 
 - `ConfigsResponse`：`port`、`mixed-port`、`tun.enable`。
 - `ProxyItem`：`name`、`type`、`now`、`all`、`history`、`hidden`。
-- `ProviderItem`：Provider 名称和真实节点列表。
+- `ProviderItem`：Provider 名称、真实节点列表和可选订阅信息。
 - `DelayHistory`、`DelayResponse`、`VersionResponse`：测速和版本展示。
 
 新增字段时优先使用 `#[serde(default)]` 保持兼容，避免不同 mihomo 版本缺字段导致 TUI 崩溃。

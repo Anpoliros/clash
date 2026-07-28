@@ -1,4 +1,5 @@
 //! 应用状态与事件循环：明确拆分 UI state、runtime state 与 mihomo state。
+//! 修改时间：2026-07-28 18:15:12 +08:00
 
 use std::{collections::HashMap, io};
 
@@ -15,7 +16,7 @@ use unicode_width::UnicodeWidthStr;
 use crate::{
     config::{app_config, rules_config, rules_config::RuleGroup},
     events::{self, AppEvent},
-    mihomo::models::{DelayHistory, ProviderItem, ProxyItem},
+    mihomo::models::{DelayHistory, ProviderItem, ProxyItem, SubscriptionInfo},
     runtime::bootstrap::BootContext,
 };
 
@@ -57,6 +58,7 @@ pub struct UiState {
     pub help_open: bool,
     pub status: String,
     pub rule_input: Option<RuleInput>,
+    pub proxy_left_armed: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -130,6 +132,8 @@ pub struct RulesState {
 pub struct ProviderView {
     pub name: String,
     pub expanded: bool,
+    pub remaining: Option<u64>,
+    pub expire: Option<i64>,
     pub nodes: Vec<NodeView>,
 }
 
@@ -227,6 +231,7 @@ impl App {
                 help_open: false,
                 status: "Ready".into(),
                 rule_input: None,
+                proxy_left_armed: false,
             },
             mihomo: MihomoState::default(),
             rules: RulesState {
@@ -297,6 +302,12 @@ impl App {
             return Ok(false);
         }
 
+        let is_proxy_left =
+            self.ui.page == Page::Proxies && matches!(key.code, KeyCode::Left | KeyCode::Char('h'));
+        if !is_proxy_left {
+            self.ui.proxy_left_armed = false;
+        }
+
         match key.code {
             KeyCode::Char('q')
                 if self.ui.page == Page::Rules && self.rules.detail_group.is_some() =>
@@ -312,7 +323,15 @@ impl App {
             KeyCode::BackTab => self.prev_page(),
             KeyCode::Up | KeyCode::Char('k') => self.move_cursor(-1),
             KeyCode::Down | KeyCode::Char('j') => self.move_cursor(1),
-            KeyCode::Left | KeyCode::Char('h') => self.handle_horizontal(-1),
+            KeyCode::Left | KeyCode::Char('h') => {
+                if is_proxy_left && self.ui.proxy_left_armed {
+                    self.collapse_all_providers();
+                    self.ui.proxy_left_armed = false;
+                } else {
+                    self.handle_horizontal(-1);
+                    self.ui.proxy_left_armed = is_proxy_left;
+                }
+            }
             KeyCode::Right | KeyCode::Char('l') => self.handle_horizontal(1),
             KeyCode::Enter => {
                 let result = self.activate().await;
@@ -379,6 +398,7 @@ impl App {
     }
 
     async fn handle_mouse(&mut self, mouse: crossterm::event::MouseEvent) -> Result<()> {
+        self.ui.proxy_left_armed = false;
         match mouse.kind {
             MouseEventKind::Down(_) => {
                 if mouse.row == 0 {
@@ -1171,6 +1191,31 @@ impl App {
         self.keep_cursor_visible();
     }
 
+    fn collapse_all_providers(&mut self) {
+        let selected_provider = match self.rows.get(self.ui.cursor) {
+            Some(RowRef::Provider(provider_idx) | RowRef::NodeRow(provider_idx, _)) => {
+                Some(*provider_idx)
+            }
+            _ => None,
+        };
+        for provider in &mut self.mihomo.providers {
+            provider.expanded = false;
+        }
+        self.rebuild_rows();
+        if let Some(provider_idx) = selected_provider {
+            if let Some(row_idx) = self
+                .rows
+                .iter()
+                .position(|row| matches!(row, RowRef::Provider(idx) if *idx == provider_idx))
+            {
+                self.ui.cursor = row_idx;
+            }
+        }
+        self.ui.node_col = 0;
+        self.keep_cursor_visible();
+        self.ui.status = "已收起全部 Provider".into();
+    }
+
     fn fix_node_col(&mut self) {
         if let Some(RowRef::NodeRow(provider_idx, row_start)) = self.rows.get(self.ui.cursor) {
             let len = self
@@ -1577,18 +1622,23 @@ fn build_from_real_providers(
 
     let list: Vec<_> = ordered
         .into_iter()
-        .map(|(fallback_name, provider)| ProviderView {
-            name: if provider.name.is_empty() {
-                fallback_name
-            } else {
-                provider.name
-            },
-            expanded: true,
-            nodes: provider
-                .proxies
-                .into_iter()
-                .map(|proxy| node_from_proxy(proxy, active))
-                .collect(),
+        .map(|(fallback_name, provider)| {
+            let (remaining, expire) = subscription_view(provider.subscription_info.as_ref());
+            ProviderView {
+                name: if provider.name.is_empty() {
+                    fallback_name
+                } else {
+                    provider.name
+                },
+                expanded: true,
+                remaining,
+                expire,
+                nodes: provider
+                    .proxies
+                    .into_iter()
+                    .map(|proxy| node_from_proxy(proxy, active))
+                    .collect(),
+            }
         })
         .filter(|provider| !provider.nodes.is_empty())
         .collect();
@@ -1605,6 +1655,8 @@ fn build_from_proxy_groups(
         .map(|group| ProviderView {
             name: group.name.clone(),
             expanded: group.name != "GLOBAL",
+            remaining: None,
+            expire: None,
             nodes: group
                 .all
                 .iter()
@@ -1617,6 +1669,16 @@ fn build_from_proxy_groups(
         .collect();
     providers.sort_by(|a, b| a.name.cmp(&b.name));
     providers
+}
+
+fn subscription_view(info: Option<&SubscriptionInfo>) -> (Option<u64>, Option<i64>) {
+    let Some(info) = info else {
+        return (None, None);
+    };
+    let used = info.upload.saturating_add(info.download).max(0);
+    let remaining = (info.total > 0).then(|| info.total.saturating_sub(used).max(0) as u64);
+    let expire = (info.expire > 0).then_some(info.expire);
+    (remaining, expire)
 }
 
 fn node_from_proxy(proxy: ProxyItem, active: &str) -> NodeView {
@@ -1737,9 +1799,21 @@ fn is_emoji_char_for_layout(ch: char) -> bool {
 // #----测试----
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, path::PathBuf};
 
-    use super::{build_from_real_providers, ProviderItem, ProxyItem};
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use tokio::sync::mpsc;
+
+    use crate::{
+        config::{app_config::AppConfig, runtime_config::RuntimeConfig},
+        mihomo::{client::MihomoClient, process::MihomoProcess},
+        runtime::bootstrap::BootContext,
+    };
+
+    use super::{
+        build_from_real_providers, subscription_view, App, NodeView, ProviderItem, ProviderView,
+        ProxyItem, RowRef, SubscriptionInfo,
+    };
 
     fn provider(name: &str) -> ProviderItem {
         ProviderItem {
@@ -1747,6 +1821,39 @@ mod tests {
             proxies: vec![ProxyItem {
                 name: format!("{name}-node"),
                 ..ProxyItem::default()
+            }],
+            ..ProviderItem::default()
+        }
+    }
+
+    fn app() -> App {
+        let work_dir = PathBuf::from("/tmp/clash-tui-unit-test-missing");
+        let boot = BootContext {
+            config: RuntimeConfig {
+                controller: "http://127.0.0.1:9090".into(),
+                secret: None,
+                provider_names: Vec::new(),
+            },
+            app_config: AppConfig::default(),
+            client: MihomoClient::new("http://127.0.0.1:9090".into(), None),
+            process: MihomoProcess::new(work_dir.clone()),
+            source_config: work_dir.join("config.yaml"),
+            work_dir,
+        };
+        let (event_tx, _) = mpsc::unbounded_channel();
+        App::new(boot, event_tx)
+    }
+
+    fn provider_view(name: &str) -> ProviderView {
+        ProviderView {
+            name: name.into(),
+            expanded: true,
+            remaining: None,
+            expire: None,
+            nodes: vec![NodeView {
+                name: format!("{name}-node"),
+                delay: None,
+                active: false,
             }],
         }
     }
@@ -1781,6 +1888,50 @@ mod tests {
             .collect();
 
         assert_eq!(names, ["alpha", "zeta"]);
+    }
+
+    #[test]
+    fn subscription_view_calculates_remaining_balance() {
+        let info = SubscriptionInfo {
+            upload: 10_000_000_000,
+            download: 13_400_000_000,
+            total: 100_000_000_000,
+            expire: 1_788_134_400,
+        };
+
+        assert_eq!(
+            subscription_view(Some(&info)),
+            (Some(76_600_000_000), Some(1_788_134_400))
+        );
+        assert_eq!(subscription_view(None), (None, None));
+    }
+
+    #[tokio::test]
+    async fn consecutive_left_collapses_all_providers() {
+        let mut app = app();
+        app.mihomo.providers = vec![provider_view("first"), provider_view("second")];
+        app.rebuild_rows();
+        app.ui.cursor = 1;
+
+        app.handle_key(KeyEvent::new(KeyCode::Left, KeyModifiers::NONE))
+            .await
+            .unwrap();
+        assert!(!app.mihomo.providers[0].expanded);
+        assert!(app.mihomo.providers[1].expanded);
+
+        app.handle_key(KeyEvent::new(KeyCode::Left, KeyModifiers::NONE))
+            .await
+            .unwrap();
+        assert!(app
+            .mihomo
+            .providers
+            .iter()
+            .all(|provider| !provider.expanded));
+        assert!(matches!(
+            app.rows.get(app.ui.cursor),
+            Some(RowRef::Provider(0))
+        ));
+        assert_eq!(app.ui.node_col, 0);
     }
 }
 

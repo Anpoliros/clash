@@ -1,0 +1,49 @@
+# fixture 顶层注释必须保留
+port: 7890
+socks-port: 7891
+external-controller: 127.0.0.1:19090
+secret: "fixture-secret"
+tun:
+  enable: false
+
+# Provider 公共模板
+p: &p
+  type: http
+  interval: 3600
+  health-check:
+    enable: true
+    url: https://cp.cloudflare.com
+    interval: 300
+
+# 策略组公共模板
+use: &use
+  type: url-test
+  use:
+    - old-http
+    - local-file
+
+proxy-providers:
+  old-http:
+    <<: *p
+    url: "https://example.invalid/old"
+    path: ./providers/old-http.yaml
+  local-file:
+    type: file
+    path: ./providers/local-file.yaml
+
+proxy-groups:
+  - name: 节点选择
+    type: select
+    proxies:
+      - 自动选择
+      - 全部节点
+  - name: 自动选择
+    <<: *use
+  - name: 全部节点
+    type: select
+    use:
+      - old-http
+      - local-file
+
+rules:
+  - MATCH,节点选择

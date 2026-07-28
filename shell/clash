@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # clash 单入口：管理 mihomo 启停、日志、状态和订阅配置。
+# 修改时间：2026-07-28 18:15:12 +08:00
 
 # #----路径定位----
 if [ -n "${ZSH_VERSION:-}" ]; then
@@ -16,10 +17,15 @@ CLASH_DIR="${CLASH_DIR:-$PROJECT_DIR/mihomo}"
 CLASH_BIN="${CLASH_BIN:-$CLASH_DIR/mihomo-linux-amd64-v1}"
 CONFIG_FILE="${CLASH_CONFIG:-$CLASH_DIR/config.yaml}"
 PID_FILE="${CLASH_PID:-$CLASH_DIR/mihomo.pid}"
-LOG_FILE="${CLASH_LOG:-$CLASH_DIR/mihomo.log}"
+LOGS_DIR="${CLASH_LOGS_DIR:-$PROJECT_DIR/logs}"
+LOG_FILE="${CLASH_LOG:-$LOGS_DIR/mihomo/current.log}"
 TUI_DIR="${CLASH_TUI_DIR:-$PROJECT_DIR/tui}"
 TUI_BIN_DIR="${CLASH_TUI_BIN_DIR:-$PROJECT_DIR/bin}"
 TUI_BIN="$TUI_BIN_DIR/clash-tui"
+CONFIG_TOOL="$SCRIPT_DIR/config.py"
+ARCHIVE_TOOL="$SCRIPT_DIR/archive.py"
+CACHE_TOOL="$SCRIPT_DIR/provider_cache.py"
+PYTHON_BIN="${CLASH_PYTHON:-python3}"
 STATE_LOCK_DIR="$CLASH_DIR/.clash.lock"
 DEFAULT_PROXY_PORT=7890
 
@@ -68,50 +74,40 @@ with_state_lock() {
     return "$code"
 }
 
-# #----依赖与 YAML----
-require_yq() {
-    command -v yq >/dev/null 2>&1 || die "需要 yq。Debian/Ubuntu 可执行：sudo apt install yq"
+# #----配置工具----
+require_config_tool() {
+    command -v "$PYTHON_BIN" >/dev/null 2>&1 || die "需要 Python 3：$PYTHON_BIN"
+    [ -f "$CONFIG_TOOL" ] || die "配置工具不存在：$CONFIG_TOOL"
 }
 
-yq_read() {
-    command -v yq >/dev/null 2>&1 || return 1
-    yq -r "$1" "$CONFIG_FILE"
+config_tool() {
+    require_config_tool || return 1
+    "$PYTHON_BIN" "$CONFIG_TOOL" --config "$CONFIG_FILE" "$@"
 }
 
-yq_write() {
-    require_yq || return 1
-    local expr="$1"
-    local tmp
-    tmp="$(mktemp "$CONFIG_FILE.tmp.XXXXXX")" || return 1
-    cp "$CONFIG_FILE" "$tmp" || {
-        rm -f "$tmp"
-        return 1
-    }
-    if ! yq -i "$expr" "$tmp" >/dev/null 2>&1; then
-        yq -y -i "$expr" "$tmp" >/dev/null 2>&1 || {
-            rm -f "$tmp"
-            return 1
-        }
+config_get() {
+    config_tool get "$1" 2>/dev/null
+}
+
+config_update() {
+    require_config_tool || return 1
+    if [ -x "$CLASH_BIN" ]; then
+        "$PYTHON_BIN" "$CONFIG_TOOL" --config "$CONFIG_FILE" --home "$CLASH_DIR" --validator "$CLASH_BIN" --logs-dir "$LOGS_DIR" "$@"
+    else
+        "$PYTHON_BIN" "$CONFIG_TOOL" --config "$CONFIG_FILE" --home "$CLASH_DIR" --logs-dir "$LOGS_DIR" "$@"
     fi
-    yq_validate_file "$tmp" || {
-        rm -f "$tmp"
-        die "写入后的 YAML 校验失败，已保留原配置"
-        return 1
-    }
-    mv "$tmp" "$CONFIG_FILE"
 }
 
-yq_validate_file() {
-    command -v yq >/dev/null 2>&1 || return 1
-    yq -r '.' "$1" >/dev/null 2>&1
+archive_tool() {
+    require_config_tool || return 1
+    [ -f "$ARCHIVE_TOOL" ] || die "归档工具不存在：$ARCHIVE_TOOL"
+    "$PYTHON_BIN" "$ARCHIVE_TOOL" --logs-dir "$LOGS_DIR" "$@"
 }
 
-require_valid_config() {
-    require_yq || return 1
-    if ! yq_validate_file "$CONFIG_FILE"; then
-        die "config.yaml YAML 语法错误，请先运行：clash config clean"
-        return 1
-    fi
+cache_tool() {
+    require_config_tool || return 1
+    [ -f "$CACHE_TOOL" ] || die "缓存工具不存在：$CACHE_TOOL"
+    "$PYTHON_BIN" "$CACHE_TOOL" --config "$CONFIG_FILE" --home "$CLASH_DIR" --logs-dir "$LOGS_DIR" "$@"
 }
 
 json_quote() {
@@ -122,24 +118,6 @@ json_quote() {
     printf '"%s"' "$value"
 }
 
-backup_config() {
-    local stamp backup index
-    stamp="$(date +%Y%m%d%H%M%S)"
-    backup="$CONFIG_FILE.bak.$stamp"
-    index=1
-    while [ -e "$backup" ]; do
-        backup="$CONFIG_FILE.bak.$stamp.$index"
-        index=$((index + 1))
-    done
-    cp "$CONFIG_FILE" "$backup" || return 1
-    info "Backup: $backup"
-}
-
-config_value() {
-    local expr="$1"
-    yq_read "$expr" 2>/dev/null | sed '/^null$/d'
-}
-
 reload_running_config() {
     is_running || return 0
     command -v curl >/dev/null 2>&1 || {
@@ -148,7 +126,7 @@ reload_running_config() {
     }
 
     local controller secret config_path payload response http_status body
-    controller="$(config_value '."external-controller" // "127.0.0.1:9090"')"
+    controller="$(config_get controller)"
     [ -n "$controller" ] || controller="127.0.0.1:9090"
     case "$controller" in
         http://*|https://*) ;;
@@ -158,7 +136,7 @@ reload_running_config() {
 
     config_path="$(cd "$(dirname "$CONFIG_FILE")" && pwd)/$(basename "$CONFIG_FILE")"
     payload="{\"path\":$(json_quote "$config_path"),\"payload\":\"\"}"
-    secret="$(config_value '.secret // ""')"
+    secret="$(config_get secret)"
 
     if [ -n "$secret" ]; then
         response="$(curl --silent --show-error --noproxy '*' --connect-timeout 3 --max-time 30 \
@@ -203,63 +181,13 @@ fallback_tun_enabled() {
 
 proxy_port() {
     local port
-    port="$(config_value '."mixed-port" // .port // 7890')"
+    port="$(config_get proxy-port)"
     printf '%s' "${port:-$DEFAULT_PROXY_PORT}"
 }
 
 set_tun_enabled() {
     local enabled="$1"
-    local tmp
-    tmp="$(mktemp)" || return 1
-    awk -v enabled="$enabled" '
-        function indent_of(line, pos) {
-            pos = match(line, /[^ ]/)
-            return pos ? pos - 1 : length(line)
-        }
-        function spaces(count, out, i) {
-            out = ""
-            for (i = 0; i < count; i++) out = out " "
-            return out
-        }
-        /^[[:space:]]*tun:[[:space:]]*$/ {
-            print
-            in_tun = 1
-            seen_tun = 1
-            changed = 0
-            tun_indent = indent_of($0)
-            child_prefix = spaces(tun_indent + 2)
-            next
-        }
-        in_tun {
-            current_indent = indent_of($0)
-            if ($0 !~ /^[[:space:]]*$/ && current_indent <= tun_indent) {
-                if (!changed) {
-                    print child_prefix "enable: " enabled
-                    changed = 1
-                }
-                in_tun = 0
-            }
-            if (in_tun && $0 ~ /^[[:space:]]*enable:[[:space:]]*/) {
-                print child_prefix "enable: " enabled
-                changed = 1
-                next
-            }
-        }
-        { print }
-        END {
-            if (in_tun && !changed) {
-                print child_prefix "enable: " enabled
-            }
-            if (!seen_tun) {
-                print ""
-                print "tun:"
-                print "  enable: " enabled
-                print "  stack: system"
-                print "  auto-route: true"
-                print "  auto-detect-interface: true"
-            }
-        }
-    ' "$CONFIG_FILE" > "$tmp" && mv "$tmp" "$CONFIG_FILE"
+    config_update set tun-enabled "$enabled" >/dev/null
 }
 
 # #----运行状态----
@@ -286,7 +214,7 @@ own_mihomo_pids() {
 
 running_mode() {
     local tun
-    tun="$(config_value '.tun.enable // false')"
+    tun="$(config_get tun-enabled)"
     [ -n "$tun" ] || tun="$(fallback_tun_enabled)"
     if [ "$tun" = "true" ]; then
         printf 'tun'
@@ -319,12 +247,12 @@ status_detail() {
     echo "  log:     $LOG_FILE"
     echo
     echo "Config"
-    echo "  http:       $(config_value '.port // "-"')"
-    echo "  mixed:      $(config_value '."mixed-port" // "-"')"
-    echo "  socks:      $(config_value '."socks-port" // "-"')"
-    echo "  controller: $(config_value '."external-controller" // "-"')"
-    echo "  tun:        $(config_value '.tun.enable // false')"
-    echo "  providers:  $(config_value '."proxy-providers" | keys | join(", ")' || true)"
+    echo "  http:       $(config_get port)"
+    echo "  mixed:      $(config_get mixed-port)"
+    echo "  socks:      $(config_get socks-port)"
+    echo "  controller: $(config_get external-controller)"
+    echo "  tun:        $(config_get tun-enabled)"
+    echo "  providers:  $(config_get provider-names || true)"
     echo
     echo "Shell"
     echo "  http_proxy:  ${http_proxy:-"-"}"
@@ -339,10 +267,15 @@ status_detail() {
 
 # #----启停控制----
 prepare_log_user() {
-    if [ -e "$LOG_FILE" ] && [ ! -w "$LOG_FILE" ]; then
-        sudo chown "$(id -u):$(id -g)" "$LOG_FILE" 2>/dev/null || sudo rm -f "$LOG_FILE"
+    if [ -n "${CLASH_LOG:-}" ]; then
+        mkdir -p "$(dirname "$LOG_FILE")" || return 1
+        if [ -e "$LOG_FILE" ] && [ ! -w "$LOG_FILE" ]; then
+            sudo chown "$(id -u):$(id -g)" "$LOG_FILE" 2>/dev/null || return 1
+        fi
+        : > "$LOG_FILE" || return 1
+    else
+        LOG_FILE="$(archive_tool runtime create)" || return 1
     fi
-    : > "$LOG_FILE" || return 1
 }
 
 export_proxy_env() {
@@ -358,6 +291,43 @@ unset_proxy_env() {
     unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
 }
 
+proxy_env_signature() {
+    local config_stamp pid state
+    config_stamp="$(stat -c '%y:%s:%i' "$CONFIG_FILE" 2>/dev/null || printf 'missing')"
+    pid="$(pid_value)"
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+        state="running"
+    else
+        state="stopped"
+    fi
+    printf '%s|%s|%s' "$config_stamp" "$pid" "$state"
+}
+
+_clash_auto_env() {
+    CLASH_QUIET=1 sync_env_if_changed
+}
+
+register_proxy_env_hook() {
+    local hook
+    if [ -n "${ZSH_VERSION:-}" ]; then
+        autoload -Uz add-zsh-hook
+        add-zsh-hook -d precmd _clash_auto_env 2>/dev/null || true
+        add-zsh-hook precmd _clash_auto_env
+    elif [ -n "${BASH_VERSION:-}" ]; then
+        if declare -p PROMPT_COMMAND 2>/dev/null | command grep -q 'declare -a'; then
+            for hook in "${PROMPT_COMMAND[@]}"; do
+                [ "$hook" = "_clash_auto_env" ] && return 0
+            done
+            PROMPT_COMMAND+=(_clash_auto_env)
+        else
+            case ";${PROMPT_COMMAND:-};" in
+                *';_clash_auto_env;'*) ;;
+                *) PROMPT_COMMAND="_clash_auto_env${PROMPT_COMMAND:+;$PROMPT_COMMAND}" ;;
+            esac
+        fi
+    fi
+}
+
 sync_env() {
     if is_running && [ "$(running_mode)" = "normal" ]; then
         export_proxy_env
@@ -366,11 +336,23 @@ sync_env() {
         unset_proxy_env
         quiet || info "proxy env cleared"
     fi
+    CLASH_ENV_SIGNATURE="$(proxy_env_signature)"
+}
+
+sync_env_if_changed() {
+    local signature
+    signature="$(proxy_env_signature)"
+    if [ "${CLASH_ENV_SIGNATURE:-}" = "$signature" ]; then
+        return 0
+    fi
+    sync_env
 }
 
 start_normal() {
     [ -x "$CLASH_BIN" ] || die "mihomo 二进制不可执行：$CLASH_BIN"
     if is_running; then
+        sync_env
+        register_proxy_env_hook
         short_status
         return 0
     fi
@@ -380,6 +362,8 @@ start_normal() {
     nohup "$CLASH_BIN" -d "$CLASH_DIR" > "$LOG_FILE" 2>&1 &
     echo $! > "$PID_FILE"
     export_proxy_env
+    CLASH_ENV_SIGNATURE="$(proxy_env_signature)"
+    register_proxy_env_hook
     info "mihomo started (normal) | pid=$(pid_value) | proxy=$http_proxy"
 }
 
@@ -391,14 +375,16 @@ start_tun() {
     fi
 
     set_tun_enabled true || return 1
+    prepare_log_user || die "无法创建运行日志：$LOGS_DIR/mihomo"
     info "[sudo] TUN 模式需要权限，正在验证..."
     sudo -v || return 1
     if is_running; then
         short_status
         return 0
     fi
-    sudo bash -c "cd '$CLASH_DIR' && : > '$LOG_FILE' && nohup '$CLASH_BIN' -d '$CLASH_DIR' > '$LOG_FILE' 2>&1 & echo \$! > '$PID_FILE'"
+    sudo bash -c "cd '$CLASH_DIR' && nohup '$CLASH_BIN' -d '$CLASH_DIR' > '$LOG_FILE' 2>&1 & echo \$! > '$PID_FILE'"
     unset_proxy_env
+    CLASH_ENV_SIGNATURE="$(proxy_env_signature)"
     info "mihomo started (tun) | pid=$(pid_value)"
 }
 
@@ -447,6 +433,7 @@ EOF
 
     rm -f "$PID_FILE" 2>/dev/null || sudo rm -f "$PID_FILE" 2>/dev/null
     unset_proxy_env
+    CLASH_ENV_SIGNATURE="$(proxy_env_signature)"
 }
 
 show_log() {
@@ -465,223 +452,76 @@ show_log() {
 usage_config() {
     cat <<'EOF'
 用法：
-  clash config add -n 名称 -u 订阅链接 [-p 保存路径]
+  clash config add 名称 (-u 订阅链接 | -f 本地文件) [-p 托管路径] [-g 策略组]
   clash config ls
-  clash config rm  -n 名称
-  clash config clean
+  clash config rm 名称
+  clash config set-url 名称 -u 新订阅链接
+  clash config cache-update [名称 ...]
+  clash config cache-clean
 
 示例：
-  clash config add -n airport -u https://example.com/sub.yaml
-  clash config add -n airport -u https://example.com/sub.yaml -p /home/me/.config/mihomo/providers/airport.yaml
-  clash config rm -n airport
-  clash config clean
+  clash config add airport -u https://example.com/sub.yaml
+  clash config add local -f ~/Downloads/local.yaml
+  clash config add local -f ~/Downloads/local.yaml -p ./providers/custom.yaml
+  clash config rm airport
+  clash config set-url airport -u https://example.com/new-sub.yaml
+  clash config cache-update
+  clash config cache-clean
 EOF
 }
 
-is_blank_value() {
-    [ -z "$(printf '%s' "${1:-}" | tr -d '[:space:]')" ]
-}
-
-require_option_value() {
-    local opt="$1"
-    local value="${2-}"
-    if [ "$#" -lt 2 ] || is_blank_value "$value"; then
-        die "参数 $opt 需要非空值"
-        return 1
-    fi
-    case "$value" in
-        -*) die "参数 $opt 需要非空值，收到疑似选项：$value"; return 1 ;;
-    esac
-}
-
 config_add() {
-    local name="" url="" provider_path=""
     case "${1:-}" in
         -h|--help) usage_config; return 0 ;;
     esac
-    if [ "$#" -lt 4 ]; then
-        usage_config
-        die "config add 至少需要：-n 名称 -u 订阅链接"
-        return 1
-    fi
-    if [ $(( $# % 2 )) -ne 0 ]; then
-        usage_config
-        die "config add 参数不完整，请检查是否缺少某个选项值"
-        return 1
-    fi
-    while [ $# -gt 0 ]; do
-        case "$1" in
-            -h|--help) usage_config; return 0 ;;
-            -n|--name) require_option_value "$1" "${2-}" || return 1; name="$2"; shift 2 ;;
-            -u|--url) require_option_value "$1" "${2-}" || return 1; url="$2"; shift 2 ;;
-            -p|--path) require_option_value "$1" "${2-}" || return 1; provider_path="$2"; shift 2 ;;
-            *) usage_config; return 1 ;;
-        esac
-    done
-    if is_blank_value "$name"; then
-        die "缺少订阅名：-n/--name"
-        return 1
-    fi
-    if is_blank_value "$url"; then
-        die "缺少订阅链接：-u/--url"
-        return 1
-    fi
-    [ -n "$provider_path" ] || provider_path="./providers/$name.yaml"
-    if is_blank_value "$provider_path"; then
-        die "订阅保存路径不能为空：-p/--path"
-        return 1
-    fi
-
-    require_valid_config || return 1
     mkdir -p "$CLASH_DIR/providers"
-    backup_config || return 1
-    config_sanitize || return 1
-
-    local q_name q_url q_path q_prefix
-    q_name="$(json_quote "$name")"
-    q_url="$(json_quote "$url")"
-    q_path="$(json_quote "$provider_path")"
-    q_prefix="$(json_quote "[$name]")"
-
-    yq_write ".\"proxy-providers\"[$q_name] = {
-        \"type\": \"http\",
-        \"interval\": 3600,
-        \"health-check\": {
-          \"enable\": true,
-          \"url\": \"https://cp.cloudflare.com\",
-          \"interval\": 300,
-          \"timeout\": 1000,
-          \"tolerance\": 100
-        },
-        \"url\": $q_url,
-        \"path\": $q_path,
-        \"override\": {\"additional-prefix\": $q_prefix}
-      } |
-      (.\"proxy-groups\"[] | select(.name == \"自动选择\").use) |= (((. // []) + [$q_name]) | unique) |
-      (.\"proxy-groups\"[] | select(.name == \"全部节点\").use) |= (((. // []) + [$q_name]) | unique)" || return 1
-
+    config_update provider add "$@" || return 1
     reload_running_config || {
         die "Provider 已写入 config.yaml，但运行中的 mihomo 未能加载新配置"
         return 1
     }
-    info "Provider added: $name"
-    info "Path: $provider_path"
 }
 
 config_ls() {
-    require_yq || return 1
-    yq -r '."proxy-providers" // {} | to_entries[] | "\(.key)\t\(.value.url // "-")"' "$CONFIG_FILE" |
-        awk -F '\t' '
-            BEGIN { max = 4 }
-            {
-                rows[++count] = $0
-                if (length($1) > max) max = length($1)
-            }
-            END {
-                printf "%-*s   %s\n", max, "NAME", "URL"
-                printf "%-*s   %s\n", max, "----", "---"
-                for (i = 1; i <= count; i++) {
-                    split(rows[i], cols, "\t")
-                    printf "%-*s   %s\n", max, cols[1], cols[2]
-                }
-            }'
+    if is_running; then
+        cache_tool list
+    else
+        config_tool provider ls
+    fi
 }
 
 config_rm() {
-    local name=""
-    while [ $# -gt 0 ]; do
-        case "$1" in
-            -h|--help) usage_config; return 0 ;;
-            -n|--name) require_option_value "$1" "${2-}" || return 1; name="$2"; shift 2 ;;
-            -u|--url|-p|--path) require_option_value "$1" "${2-}" || return 1; shift 2 ;;
-            *) usage_config; return 1 ;;
-        esac
-    done
-    if is_blank_value "$name"; then
-        die "缺少订阅名：-n/--name"
+    case "${1:-}" in
+        -h|--help) usage_config; return 0 ;;
+    esac
+    config_update provider rm "$@" || return 1
+    reload_running_config || {
+        die "Provider 已从 config.yaml 移除，但运行中的 mihomo 未能加载新配置"
+        return 1
+    }
+}
+
+config_set_url() {
+    case "${1:-}" in
+        -h|--help) usage_config; return 0 ;;
+    esac
+    config_update provider set-url "$@" || return 1
+    reload_running_config || {
+        die "Provider URL 已更新，但运行中的 mihomo 未能加载新配置"
+        return 1
+    }
+}
+
+config_cache_update() {
+    if ! is_running; then
+        die "mihomo 未运行，无法通过 Provider API 更新缓存"
         return 1
     fi
-
-    require_valid_config || return 1
-    backup_config || return 1
-    local q_name
-    q_name="$(json_quote "$name")"
-    yq_write "del(.\"proxy-providers\"[$q_name]) |
-      (.\"proxy-groups\"[]?.use) |= ((. // []) - [$q_name])" || return 1
-    info "Provider removed: $name"
+    cache_tool update "$@"
 }
 
-config_sanitize() {
-    local expr
-    expr='
-      ."proxy-providers" = (
-        (."proxy-providers" // {}) |
-        with_entries(
-          select(
-            ((.key | tostring | gsub("\\s"; "")) != "") and
-            ((.value.url // "" | tostring | gsub("\\s"; "")) != "")
-          )
-        )
-      ) |
-      (."proxy-providers" | keys) as $provider_names |
-      if ."proxy-groups"? then
-        ."proxy-groups" |= map(
-          if has("use") then
-            .use |= ((. // []) | map(select((. | tostring | gsub("\\s"; "")) != "")) | map(select(. as $name | ($provider_names | index($name)) != null)))
-          else . end
-        )
-      else . end |
-      if (.use? | type) == "object" and (.use.use? | type) == "array" then
-        .use.use |= ((. // []) | map(select((. | tostring | gsub("\\s"; "")) != "")) | map(select(. as $name | ($provider_names | index($name)) != null)))
-      else . end
-    '
-    yq_write "$expr"
-}
-
-restore_valid_config_from_backup() {
-    local backup
-    while IFS= read -r backup; do
-        [ -n "$backup" ] || continue
-        if yq_validate_file "$backup"; then
-            cp "$backup" "$CONFIG_FILE" || return 1
-            info "已从可解析备份恢复：$backup"
-            return 0
-        fi
-    done <<EOF
-$(find "$CLASH_DIR" -maxdepth 1 -type f -name 'config.yaml.bak*' 2>/dev/null | sort -r)
-EOF
-    return 1
-}
-
-restore_config_from_example() {
-    local example="$CLASH_DIR/example.config.yaml"
-    [ -f "$example" ] || return 1
-    yq_validate_file "$example" || return 1
-    cp "$example" "$CONFIG_FILE" || return 1
-    info "未找到可解析备份，已使用 example.config.yaml 重建基础配置"
-}
-
-config_clean() {
-    require_yq || return 1
-
-    if ! yq_validate_file "$CONFIG_FILE"; then
-        info "config.yaml YAML 语法错误，尝试从备份恢复..."
-        restore_valid_config_from_backup || restore_config_from_example || die "无法自动修复 config.yaml 语法错误"
-    fi
-
-    config_sanitize || return 1
-    if ! yq_validate_file "$CONFIG_FILE"; then
-        die "清理后 YAML 校验失败"
-        return 1
-    fi
-
-    if [ -d "$CLASH_DIR/providers" ]; then
-        find "$CLASH_DIR/providers" -mindepth 1 -maxdepth 1 -type f \( -name '*.yaml' -o -name '*.yml' \) -delete
-        info "已移除 providers 缓存：$CLASH_DIR/providers"
-    fi
-    find "$CLASH_DIR" -maxdepth 1 -type f -name 'config.yaml.bak*' -delete
-    info "已移除 config.yaml.bak 缓存"
-    info "config.yaml clean 完成"
+config_cache_clean() {
+    cache_tool clean
 }
 
 config_cmd() {
@@ -691,7 +531,9 @@ config_cmd() {
         add) config_add "$@" ;;
         ls|list) config_ls ;;
         rm|remove) config_rm "$@" ;;
-        clean) config_clean ;;
+        set-url) config_set_url "$@" ;;
+        cache-update) config_cache_update "$@" ;;
+        cache-clean) config_cache_clean ;;
         -h|--help|help) usage_config ;;
         *) usage_config; return 1 ;;
     esac
@@ -783,12 +625,14 @@ usage() {
   clash tun             TUN 模式启动 mihomo，会先进行 sudo 验证
   clash off             停止 mihomo，并清理代理环境变量
   clash env             根据 mihomo 状态同步当前 shell 的代理环境变量
-  clash log             使用 less +F 跟随 mihomo.log
+  clash log             使用 less +F 跟随最近一次运行日志
   clash tui             运行、构建或开发终端界面
   clash config add      添加订阅 Provider 到 config.yaml
-  clash config ls       列出订阅 Provider 名称和链接
+  clash config ls       列出订阅 Provider、余额和到期日期
   clash config rm       从 config.yaml 移除订阅 Provider
-  clash config clean    修复并清理订阅配置缓存
+  clash config set-url  修改 HTTP Provider 的订阅链接
+  clash config cache-update  主动更新 HTTP Provider 缓存
+  clash config cache-clean   将可清理缓存安全归档到 logs
 
 更多帮助：
   clash tui -h
@@ -808,11 +652,14 @@ main() {
         on) with_state_lock start_normal ;;
         tun) with_state_lock start_tun ;;
         off) with_state_lock stop_clash ;;
-        env) sync_env ;;
+        env)
+            sync_env
+            register_proxy_env_hook
+            ;;
         status) status_detail ;;
         log) show_log ;;
         tui) tui_cmd "$@" ;;
-        config) config_cmd "$@" ;;
+        config) with_state_lock config_cmd "$@" ;;
         help|-h|--help) usage ;;
         *) usage; return 1 ;;
     esac

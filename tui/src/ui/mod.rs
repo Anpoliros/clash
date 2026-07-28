@@ -1,5 +1,7 @@
 //! UI 渲染入口：组合顶部标签、页面内容与全屏日志浮层。
+//! 修改时间：2026-07-28 18:15:12 +08:00
 
+mod subscription;
 pub mod theme;
 
 use ratatui::{
@@ -264,6 +266,11 @@ fn draw_proxies(frame: &mut Frame<'_>, area: Rect, app: &App, theme: &Theme) {
                 };
                 ListItem::new(Line::from(vec![
                     Span::styled(format!("[{icon}] {}", provider.name), style),
+                    Span::raw("  "),
+                    Span::styled(
+                        subscription::label(provider.remaining, provider.expire),
+                        theme.text,
+                    ),
                     Span::raw("  "),
                     Span::styled("[Refresh]", theme.action),
                     Span::raw(" "),
@@ -737,9 +744,14 @@ fn draw_status(frame: &mut Frame<'_>, area: Rect, app: &App, theme: &Theme) {
             " {} | Enter 进入 | Space 启停 | l 展开 | h 收起 | J/K 调序 | ? 帮助",
             app.ui.status
         )
+    } else if app.ui.page == Page::Proxies {
+        format!(
+            " {} | Tab 切换页面 | j/k 移动 | h/l 展开或列移动 | h h 全收起 | Enter 操作 | ? 帮助",
+            app.ui.status
+        )
     } else {
         format!(
-            " {} | Tab 切换页面 | j/k 移动 | h/l 展开或列移动 | Enter 操作 | ? 帮助",
+            " {} | Tab 切换页面 | j/k 移动 | h/l 调整数值 | Enter 操作 | ? 帮助",
             app.ui.status
         )
     };
@@ -785,6 +797,7 @@ fn draw_help(frame: &mut Frame<'_>, area: Rect, app: &App, theme: &Theme) {
             "",
             "j/k 或 ↑/↓        移动焦点",
             "h/l 或 ←/→        收起/展开或列移动",
+            "连续两次 h/←      收起全部 Provider",
             "Enter / Space      选择节点或展开 Provider",
             "r                  刷新 Provider",
             "p                  Provider 测速",

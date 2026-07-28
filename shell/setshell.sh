@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # 注册 clash 单入口函数，让 on/off 能影响当前 shell 的代理环境变量。
+# 修改时间：2026-07-28 18:15:12 +08:00
 
 set -euo pipefail
 
@@ -39,9 +40,8 @@ case "${1:-install}" in
         chmod +x "$CLASH_ENTRY"
         inject "$HOME/.zshrc"
         inject "$HOME/.bashrc"
-        if ! command -v yq >/dev/null 2>&1; then
-            echo "Warning: yq not found. Install it before using clash on/tun/config:"
-            echo "  sudo apt install yq"
+        if ! command -v python3 >/dev/null 2>&1; then
+            echo "Warning: python3 not found. Install Python 3 before using clash."
         fi
         echo "Done. Reload your shell or run: source ~/.zshrc"
         ;;

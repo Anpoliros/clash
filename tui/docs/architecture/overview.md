@@ -1,5 +1,7 @@
 # Architecture Overview
 
+<!-- 修改时间：2026-07-28 18:15:12 +08:00 -->
+
 `clash-tui` 是面向 mihomo 的 Runtime First 终端客户端：优先通过 external-controller API 操作运行态，配置文件限定在用户传入的 mihomo 工作目录内。
 
 ## 系统边界
@@ -45,7 +47,7 @@
 | `GET /proxies` | 获取 Selector、当前节点和 fallback Provider 数据 |
 | `PUT /proxies/{group}` | 切换 Selector 选择 |
 | `GET /proxies/{node}/delay` | 单节点测速 |
-| `GET /providers/proxies` | 获取真实 Provider 和节点列表 |
+| `GET /providers/proxies` | 获取真实 Provider、节点列表和可用的订阅余额 |
 | `PUT /providers/proxies/{provider}` | 刷新 Provider |
 | `GET /providers/proxies/{provider}/healthcheck` | Provider 健康检查 |
 | `WS /logs` | 流式日志 |

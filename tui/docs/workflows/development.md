@@ -1,5 +1,7 @@
 # Development Workflow
 
+<!-- 修改时间：2026-07-28 18:15:12 +08:00 -->
+
 本文档记录 `clash-tui` 的本地开发、运行、验证和常见排障方式。
 
 ## 触发场景
@@ -52,7 +54,7 @@ cargo run -- -d /home/anpoliros/clash
 | Rules | 分组启停和顺序会写入 `rules:` 顶部；规则文件在 `rules/*.yaml`；保存后热加载 |
 | mihomo client | controller 请求不走环境代理；secret 场景仍能认证 |
 | process | 读取 `mihomo.pid` 后能正确显示运行状态；不触发启停 |
-| Proxies | Provider 顺序稳定；展开、选择、刷新、测速、排序行为正常 |
+| Proxies | Provider 顺序稳定；展开、选择、刷新、测速、排序和订阅余额显示正常 |
 | UI | Tab、状态栏、日志浮层、鼠标滚轮和键盘移动不互相干扰 |
 
 ## 常见问题

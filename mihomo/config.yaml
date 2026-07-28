@@ -1,11 +1,18 @@
+# mihomo 公开示例配置：保留当前开发结构，仅替换订阅、密钥和机器标识。
+# 修改时间：2026-07-22 20:17:37 +08:00
+
 port: 7890
 socks-port: 7891
 allow-lan: false
 mode: rule
 log-level: info
+
+# ==== ui ====
 external-controller: 127.0.0.1:9090
 external-ui: ./ui
-secret: 'CLASH-webui-890890'
+secret: "CHANGE_ME"
+
+# ==== tun ====
 tun:
   enable: true
   stack: mixed
@@ -22,8 +29,10 @@ tun:
     - 192.168.0.0/16
   dns-hijack:
     - any:53
-  # exclude-uid:
-    # - 996
+  exclude-uid: # 不接管以下用户的流量
+    - 1000 # 替换为需要排除的本机 UID
+
+# ==== dns ====
 dns:
   enable: true
   ipv6: false
@@ -43,48 +52,100 @@ dns:
     - 8.8.8.8
     - https://1.1.1.1/dns-query
     - https://dns.google/dns-query
+
 sniffer:
   enable: true
   sniffing:
-  - tls
-  - http
-p:
+    - tls
+    - http
+
+# ==== Provider 公共参数 ====
+p: &p
   type: http
-  interval: 3600
+  interval: 3600 # 自动更新订阅时间，单位为秒
   health-check:
     enable: true
     url: https://cp.cloudflare.com
-    interval: 300
+    interval: 300 # 节点连通性检测时间间隔，单位为秒
     timeout: 1000
     tolerance: 100
-use:
+
+# ==== 自动选择共用 Provider ====
+use: &use
   type: url-test
   use:
-  - kitty
-  - ikuuu
+    - kitty
+    - ikuuu
+    - ikuuu-cage
+    - ranges-cage
+
+# ==== providers ====
 proxy-providers:
+  ikuuu:
+    <<: *p
+    url: "https://example.invalid/subscription"
+    path: ./providers/ikuuu.yaml
+    override:
+      additional-prefix: "[ikuuu]"
+
+  kitty:
+    <<: *p
+    url: "https://example.invalid/subscription"
+    path: ./providers/kitty.yaml
+    override:
+      additional-prefix: "[kitty]"
+
+  ikuuu-cage:
+    <<: *p
+    url: "https://example.invalid/subscription"
+    path: ./providers/ikuuu-cage.yaml
+    override:
+      additional-prefix: "[ikuuu-cage]"
+
+  ranges-cage:
+    type: file
+    path: ./providers/ranges-cage.yaml
+    health-check:
+      enable: true
+      url: https://cp.cloudflare.com
+      interval: 300
+      timeout: 1000
+      tolerance: 100
+    override:
+      additional-prefix: "[ranges-cage]"
+
+# ==== proxy-groups ====
 proxy-groups:
-- name: 节点选择
-  type: select
-  proxies:
-  - 自动选择
-  - 全部节点
-  use: []
-- type: url-test
-  use:
-  - ikuuu
-  - kitty
-  name: 自动选择
-- name: 全部节点
-  type: select
-  use:
-  - ikuuu
-  - kitty
+  - name: 节点选择
+    type: select
+    proxies:
+      - 自动选择
+      - 全部节点
+    use: []
+
+  - name: 自动选择
+    type: url-test
+    use:
+      - ikuuu
+      - kitty
+      - ikuuu-cage
+      - ranges-cage
+
+  - name: 全部节点
+    type: select
+    use:
+      - ikuuu
+      - kitty
+      - ikuuu-cage
+      - ranges-cage
+
+# ==== rules ====
 rules:
-- RULE-SET,aliyun,DIRECT
-- DOMAIN-SUFFIX,google.com,节点选择
-- GEOIP,CN,DIRECT
-- MATCH,节点选择
+  - RULE-SET,aliyun,DIRECT
+  - DOMAIN-SUFFIX,google.com,节点选择
+  - GEOIP,CN,DIRECT
+  - MATCH,节点选择
+
 rule-providers:
   aliyun:
     type: file
